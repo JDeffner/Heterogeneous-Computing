@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Assisted Living - Operator Console</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #1e293b;
+        --panel2: #273449;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --crit: #ef4444;
+        --accent: #38bdf8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        padding: 16px 24px;
+        background: var(--panel);
+        border-bottom: 1px solid #334155;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      header h1 { font-size: 18px; margin: 0; }
+      header .sub { color: var(--muted); font-size: 13px; }
+      #conn { font-size: 12px; color: var(--muted); }
+      .wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 20px 24px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+      @media (min-width: 980px) {
+        .wrap { grid-template-columns: 1.5fr 1fr; }
+      }
+      h2 {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin: 0 0 12px;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      }
+      /* Room grid */
+      .zones { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+      .zone {
+        background: var(--panel);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex; flex-direction: column; gap: 10px;
+      }
+      .zone.unassigned { border-style: dashed; border-color: var(--warn); }
+      .zone.discovered { border-color: #3a4a63; }
+      .zone .ztop { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+      .zone h3 { margin: 0; font-size: 15px; }
+      .zone .where { font-size: 11px; color: var(--muted); margin-top: 2px; }
+      /* Simulated QR / location code */
+      .qr { display: flex; align-items: center; gap: 8px; background: var(--panel2); border-radius: 8px; padding: 6px 8px; }
+      .qr svg { display: block; background: #fff; border-radius: 4px; padding: 2px; }
+      .qr .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--text); }
+      .qr .code small { color: var(--muted); display: block; font-family: system-ui; }
+      .sensors { display: flex; flex-direction: column; gap: 8px; }
+      .sensor {
+        background: var(--panel2);
+        border-radius: 10px;
+        padding: 8px 10px;
+        border-left: 4px solid #475569;
+      }
+      .sensor.active { border-left-color: var(--accent); }
+      .sensor .name { font-size: 13px; font-weight: 600; }
+      .sensor .meta { font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+      .sensor .val { font-size: 13px; margin-top: 4px; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+      .dot.on { background: var(--ok); }
+      .dot.off { background: #64748b; }
+      .tag { font-size: 10px; padding: 0 5px; border-radius: 999px; background: #334155; color: var(--muted); margin-left: 4px; }
+      .badge { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: #334155; }
+      .badge.crit, .badge.critical { background: var(--crit); color: #fff; }
+      .badge.warn, .badge.warning { background: var(--warn); color: #1a1a1a; }
+      .badge.info { background: var(--accent); color: #06283d; }
+      select, input[type=text] {
+        background: var(--bg); color: var(--text); border: 1px solid #4b5563;
+        border-radius: 7px; padding: 5px 7px; font-size: 12px; max-width: 100%;
+      }
+      .assignrow { display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
+      .assignrow label { font-size: 11px; color: var(--muted); }
+      button {
+        background: var(--panel2); color: var(--text); border: 1px solid #4b5563;
+        border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+      }
+      button:hover { filter: brightness(1.15); }
+      button.danger { color: var(--crit); border-color: #5b2230; background: transparent; }
+      button.primary { background: var(--accent); color: #06283d; border-color: var(--accent); font-weight: 600; }
+      .panel {
+        background: var(--panel);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 20px;
+      }
+      .addroom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .addroom input { flex: 1 1 110px; }
+      .alarm {
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        background: var(--panel2);
+        border-left: 4px solid var(--warn);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .alarm.critical { border-left-color: var(--crit); }
+      .alarm.warning { border-left-color: var(--warn); }
+      .alarm .msg { font-size: 13px; }
+      .alarm .when { font-size: 11px; color: var(--muted); margin-top: 4px; }
+      .resolve-btn {
+        background: var(--ok);
+        color: #06231a;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .resolve-btn:hover { filter: brightness(1.1); }
+      .clockrow { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 6px; }
+      .clock { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; color: var(--text); }
+      .badge.day { background: #fde68a; color: #4a3b00; }
+      .badge.night { background: #1e3a8a; color: #dbeafe; }
+      #night-btn.active { background: var(--accent); color: #06283d; border-color: var(--accent); font-weight: 600; }
+      .pairzone { border: 1px dashed var(--accent); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; background: rgba(56,189,248,0.06); }
+      .pairzone h2 { color: var(--accent); }
+      .paircard { background: var(--panel2); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+      .paircard .pid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+      .pairform { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+      .pairform input[type=text] { flex: 1 1 120px; }
+      .roomcode { display: flex; gap: 4px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
+      .roomcode input { flex: 1 1 120px; }
+      .event { font-size: 12px; padding: 6px 0; border-bottom: 1px solid #2b3a52; color: var(--muted); }
+      .event:last-child { border-bottom: none; }
+      .empty { color: var(--muted); font-size: 13px; font-style: italic; }
+      a.link { color: var(--accent); font-size: 12px; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Assisted Living &middot; Operator Console</h1>
+        <div class="sub">Rooms and their sensors. New devices are assigned to a room by scanning its code (self-announce discovery).</div>
+      </div>
+      <div style="text-align:right">
+        <div id="conn">connecting &hellip;</div>
+        <div class="clockrow">
+          <span id="clock" class="clock">--:--:--</span>
+          <span id="daynight" class="badge">&mdash;</span>
+          <button id="night-btn" title="Force the hub to treat the time as night (demo)">🌙 Simulate night</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <section>
+        <div id="pairzone" class="pairzone" style="display:none">
+          <h2>Devices waiting to pair</h2>
+          <div id="pairing"></div>
+        </div>
+
+        <h2>Rooms</h2>
+        <div class="panel">
+          <div class="addroom">
+            <input type="text" id="r-building" placeholder="Building" value="House A" />
+            <input type="text" id="r-floor" placeholder="Floor" value="Ground floor" />
+            <input type="text" id="r-room" placeholder="Room (e.g. Bathroom)" />
+            <button class="primary" id="r-add">Add room</button>
+          </div>
+          <div class="empty" id="r-hint" style="margin-top:8px">
+            Each room gets a code (its "QR"). Scan it on a device to place the device here.
+          </div>
+        </div>
+        <div id="zones" class="zones"><div class="empty">Waiting for sensors &hellip;</div></div>
+      </section>
+
+      <section>
+        <h2>Active alarms</h2>
+        <div id="alarms" class="panel"><div class="empty">No alarms.</div></div>
+
+        <h2>Event log</h2>
+        <div id="events" class="panel"><div class="empty">No events yet.</div></div>
+      </section>
+    </div>
+
+    <script>
+      const TYPE_EN = { door: "Door sensor", motion: "Motion sensor", bed: "Bed sensor", stove: "Stove guard", sos: "SOS button" };
+      let lastState = { devices: [], rooms: [], alarms: [], events: [] };
+      // Set while the user has a room dropdown open/focused, so live SSE updates
+      // don't rebuild the DOM and snap the dropdown shut mid-selection.
+      let pendingZoneRender = false;
+
+      function esc(s) {
+        return String(s).replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      }
+      function fmtState(s) {
+        if (!s) return "&ndash;";
+        switch (s.kind) {
+          case "door": return s.open ? "Door OPEN" : "Door closed";
+          case "motion": return (s.motion ? "Motion detected" : "No motion") + " &middot; " + s.lux + " lux";
+          case "bed": return s.occupied ? "Occupied &middot; " + s.heartRate + " bpm" : "Empty";
+          case "stove": return (s.on ? "ON" : "off") + " &middot; " + s.temperatureC + "&deg;C";
+          case "sos": return s.pressed ? "&#128680; SOS PRESSED" : "Idle";
+          default: return "&ndash;";
+        }
+      }
+      function isActive(s) {
+        if (!s) return false;
+        return (s.kind === "door" && s.open) || (s.kind === "motion" && s.motion) ||
+               (s.kind === "stove" && s.on) || (s.kind === "bed" && s.occupied) ||
+               (s.kind === "sos" && s.pressed);
+      }
+      function fmtIdentity(d) {
+        const a = d.announce;
+        const bits = [];
+        if (a.protocol) bits.push(a.protocol);
+        if (a.powerSource === "battery" && typeof d.battery === "number") bits.push("&#128267; " + d.battery + "%");
+        else if (a.powerSource === "mains") bits.push("mains");
+        if (typeof d.rssi === "number") bits.push(d.rssi + " dBm");
+        return bits.join(" &middot; ");
+      }
+      function fmtTime(iso) { return iso ? new Date(iso).toLocaleTimeString("en-GB") : ""; }
+
+      // Full location path "House / Floor / Room" for alarms etc.
+      function fmtLoc(l) {
+        if (!l) return "Unknown location";
+        return [l.building, l.floor, l.room].filter(Boolean).join(" / ");
+      }
+
+      // Decorative, deterministic "QR-like" matrix derived from the room code.
+      // (Simulated: a real installation would print a scannable QR of this code.)
+      function qrSvg(text) {
+        const N = 9, cell = 4;
+        let h = 2166136261;
+        for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+        let rects = "";
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+          h = Math.imul(h ^ (x * 31 + y * 7), 16777619);
+          const corner = (x < 3 && y < 3) || (x > N - 4 && y < 3) || (x < 3 && y > N - 4);
+          const on = corner ? ((x + y) % 2 === 0 || x === 0 || y === 0 || x === N - 1 || y === N - 1) : ((h >>> 28) & 1);
+          if (on) rects += '<rect x="' + (x * cell) + '" y="' + (y * cell) + '" width="' + cell + '" height="' + cell + '"/>';
+        }
+        const sz = N * cell;
+        return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 ' + sz + ' ' + sz + '" fill="#0f172a">' + rects + '</svg>';
+      }
+
+      async function api(path, opts) {
+        try { await fetch(path, opts); } catch (e) { console.error(e); }
+      }
+      function assign(deviceId, roomId) {
+        api("/api/devices/" + encodeURIComponent(deviceId) + "/assign", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId: roomId || null }),
+        });
+      }
+      function deleteRoom(roomId) {
+        if (!confirm("Delete this room? Devices placed here become unassigned.")) return;
+        api("/api/rooms/" + encodeURIComponent(roomId), { method: "DELETE" });
+      }
+      async function resolveAlarm(id) { await api("/api/alarms/" + encodeURIComponent(id) + "/resolve", { method: "POST" }); }
+      window.resolveAlarm = resolveAlarm;
+
+      async function commission(serial, name, roomId) {
+        await api("/api/commission", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ serial, name: name || undefined, roomId: roomId || null }),
+        });
+      }
+      async function setForceNight(on) {
+        await api("/api/hub/force-night", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ on }),
+        });
+      }
+
+      // --- Simulated/real time: clock + day/night badge ---------------------
+      function isNightNow(hs) {
+        if (!hs) return false;
+        if (hs.forceNight) return true;
+        const h = new Date().getHours();
+        const s = hs.nightStartHour, e = hs.nightEndHour;
+        return s > e ? (h >= s || h < e) : (h >= s && h < e);
+      }
+      function renderClock() {
+        const hs = lastState.hubStatus;
+        document.getElementById("clock").textContent = new Date().toLocaleTimeString("en-GB");
+        const night = isNightNow(hs);
+        const badge = document.getElementById("daynight");
+        badge.textContent = night ? "🌙 Night" : "☀ Day";
+        badge.className = "badge " + (night ? "night" : "day");
+        const btn = document.getElementById("night-btn");
+        const forced = !!(hs && hs.forceNight);
+        btn.textContent = forced ? "↩ Back to real time" : "🌙 Simulate night";
+        btn.classList.toggle("active", forced);
+      }
+      document.getElementById("night-btn").addEventListener("click", () =>
+        setForceNight(!(lastState.hubStatus && lastState.hubStatus.forceNight)));
+      setInterval(renderClock, 1000);
+
+      // --- Pairing (inclusion) ---------------------------------------------
+      let pendingPairRender = false;
+      function pairCardHtml(ad, rooms) {
+        const sel = '<select data-pair-room="' + esc(ad.serial) + '">' +
+          roomOptions(rooms, "", "Choose room (optional)…") + "</select>";
+        return (
+          '<div class="paircard">' +
+            '<div class="name">' + (TYPE_EN[ad.type] || ad.type) +
+              ' <span class="tag">' + esc(ad.protocol) + "</span></div>" +
+            '<div class="pid">' + esc(ad.manufacturer) + " " + esc(ad.model) +
+              " &middot; serial " + esc(ad.serial) + " &middot; PIN " + esc(ad.pairingPin) + "</div>" +
+            '<div class="pairform">' +
+              '<input type="text" data-pair-name="' + esc(ad.serial) + '" placeholder="Name (optional)" />' +
+              sel +
+              '<input type="text" data-pair-code="' + esc(ad.serial) + '" placeholder="…or room code" />' +
+              '<button class="primary" data-pair-add="' + esc(ad.serial) + '">Add</button>' +
+            "</div>" +
+          "</div>"
+        );
+      }
+      function renderPairing(state) {
+        const zone = document.getElementById("pairzone");
+        const el = document.getElementById("pairing");
+        const ads = state.pairing || [];
+        if (!ads.length) { zone.style.display = "none"; el.innerHTML = ""; return; }
+        // Don't rebuild while the user is typing into a pairing field.
+        const act = document.activeElement;
+        if (act && el.contains(act)) { pendingPairRender = true; return; }
+        pendingPairRender = false;
+        zone.style.display = "block";
+        el.innerHTML = ads.map((ad) => pairCardHtml(ad, state.rooms || [])).join("");
+        el.querySelectorAll("input").forEach((inp) =>
+          inp.addEventListener("blur", () => { if (pendingPairRender) renderPairing(lastState); }));
+        el.querySelectorAll("button[data-pair-add]").forEach((b) =>
+          b.addEventListener("click", () => {
+            const serial = b.getAttribute("data-pair-add");
+            const q = (sel) => el.querySelector(sel + '="' + CSS.escape(serial) + '"]');
+            const name = q("[data-pair-name").value.trim();
+            const code = q("[data-pair-code").value.trim();
+            const room = q("[data-pair-room").value;
+            commission(serial, name, code || room || "");
+          }));
+      }
+
+      document.getElementById("r-add").addEventListener("click", () => {
+        const body = {
+          building: document.getElementById("r-building").value.trim(),
+          floor: document.getElementById("r-floor").value.trim(),
+          room: document.getElementById("r-room").value.trim(),
+        };
+        if (!body.building || !body.floor || !body.room) { alert("Building, floor and room are required."); return; }
+        api("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        document.getElementById("r-room").value = "";
+      });
+
+      function roomOptions(rooms, selectedId, placeholder) {
+        let opts = placeholder
+          ? '<option value="" ' + (selectedId ? "" : "selected") + ' disabled>' + esc(placeholder) + "</option>"
+          : "";
+        for (const r of rooms) {
+          const lbl = r.building + " / " + r.floor + " / " + r.room;
+          opts += '<option value="' + esc(r.roomId) + '"' + (r.roomId === selectedId ? " selected" : "") + ">" + esc(lbl) + "</option>";
+        }
+        return opts;
+      }
+
+      function sensorHtml(d, rooms) {
+        const a = d.announce;
+        const active = isActive(d.lastState);
+        const modeTag = d.mode === "manual" ? '<span class="tag">manual</span>' : "";
+        const curRoom = a.location && a.location.roomId ? a.location.roomId : "";
+        const sel =
+          '<select data-assign="' + esc(a.deviceId) + '">' +
+            roomOptions(rooms, curRoom, "Move to room…") +
+            '<option value="">— unassign —</option>' +
+          "</select>";
+        return (
+          '<div class="sensor ' + (active ? "active" : "") + '">' +
+            '<div class="name"><span class="dot ' + (d.online ? "on" : "off") + '"></span>' +
+              (TYPE_EN[a.type] || a.type) + modeTag + "</div>" +
+            '<div class="meta">' + esc(a.deviceId) + "</div>" +
+            '<div class="meta">' + fmtIdentity(d) + "</div>" +
+            '<div class="val">' + fmtState(d.lastState) + "</div>" +
+            '<div class="assignrow"><label>Room:</label>' + sel + "</div>" +
+            '<div class="roomcode"><input type="text" data-code="' + esc(a.deviceId) +
+              '" placeholder="room code / scan QR" /><button data-setcode="' + esc(a.deviceId) + '">Set</button></div>' +
+          "</div>"
+        );
+      }
+
+      function renderZones(state) {
+        // If a room dropdown is currently focused/open, defer this render so we
+        // don't destroy it. We catch up when it loses focus (see blur handler).
+        const act = document.activeElement;
+        if (act && act.matches && act.matches("select[data-assign], input[data-code]") &&
+            document.getElementById("zones").contains(act)) {
+          pendingZoneRender = true;
+          return;
+        }
+        pendingZoneRender = false;
+
+        const rooms = state.rooms || [];
+        const roomById = {};
+        rooms.forEach((r) => (roomById[r.roomId] = r));
+
+        const zones = new Map(); // key -> { kind, room?, label, devices: [] }
+        // Seed registered rooms so empty ones are still shown.
+        rooms.forEach((r) => zones.set("room:" + r.roomId, { kind: "room", room: r, devices: [] }));
+        const unassigned = [];
+
+        for (const d of state.devices) {
+          const loc = d.announce.location;
+          if (!loc) { unassigned.push(d); continue; }
+          if (loc.roomId && roomById[loc.roomId]) {
+            zones.get("room:" + loc.roomId).devices.push(d);
+          } else {
+            const key = "loc:" + loc.building + "|" + loc.floor + "|" + loc.room;
+            if (!zones.has(key))
+              zones.set(key, { kind: "discovered", label: loc.building + " / " + loc.floor + " / " + loc.room, devices: [] });
+            zones.get(key).devices.push(d);
+          }
+        }
+
+        const out = [];
+
+        if (unassigned.length) {
+          const cards = unassigned.map((d) => {
+            const a = d.announce;
+            const reg = a.registeredAt ? "registered " + fmtTime(a.registeredAt) : "registered";
+            const sel =
+              '<select data-assign="' + esc(a.deviceId) + '">' +
+                roomOptions(rooms, "", "Scan a room…") +
+              "</select>";
+            return (
+              '<div class="sensor">' +
+                '<div class="name"><span class="dot ' + (d.online ? "on" : "off") + '"></span>' + (TYPE_EN[a.type] || a.type) + "</div>" +
+                '<div class="meta">' + esc(a.deviceId) + " &middot; " + reg + "</div>" +
+                '<div class="val">' + fmtState(d.lastState) + "</div>" +
+                '<div class="assignrow"><label>Assign:</label>' + sel + "</div>" +
+              "</div>"
+            );
+          }).join("");
+          out.push(
+            '<div class="zone unassigned"><div class="ztop"><div><h3>Unassigned devices</h3>' +
+            '<div class="where">Waiting for a room &mdash; pick one to "scan" its code</div></div>' +
+            '<span class="badge warn">' + unassigned.length + "</span></div>" +
+            '<div class="sensors">' + cards + "</div></div>",
+          );
+        }
+
+        // Registered rooms first, then discovered (unregistered) locations.
+        const ordered = [...zones.values()].sort((a, b) => {
+          if (a.kind !== b.kind) return a.kind === "room" ? -1 : 1;
+          const an = a.room ? a.room.room : a.label;
+          const bn = b.room ? b.room.room : b.label;
+          return an.localeCompare(bn);
+        });
+
+        for (const z of ordered) {
+          let head, qr = "";
+          if (z.kind === "room") {
+            const r = z.room;
+            head =
+              "<div><h3>" + esc(r.room) + "</h3>" +
+              '<div class="where">' + esc(r.building + " / " + r.floor) + "</div></div>" +
+              '<button class="danger" data-delroom="' + esc(r.roomId) + '">Delete</button>';
+            qr =
+              '<div class="qr">' + qrSvg(r.roomId) +
+              '<div class="code">' + esc(r.roomId) + "<small>room code &middot; scan to place a device</small></div></div>";
+          } else {
+            head = "<div><h3>" + esc(z.label) + "</h3>" +
+              '<div class="where">discovered location (not a registered room)</div></div>';
+          }
+          const body = z.devices.length
+            ? z.devices.map((d) => sensorHtml(d, rooms)).join("")
+            : '<div class="empty">No sensors yet.</div>';
+          out.push(
+            '<div class="zone ' + (z.kind === "discovered" ? "discovered" : "") + '">' +
+              '<div class="ztop">' + head + "</div>" + qr +
+              '<div class="sensors">' + body + "</div></div>",
+          );
+        }
+
+        const el = document.getElementById("zones");
+        if (!out.length) { el.innerHTML = '<div class="empty">Waiting for sensors &hellip;</div>'; return; }
+        el.innerHTML = out.join("");
+
+        el.querySelectorAll("select[data-assign]").forEach((s) => {
+          s.addEventListener("change", (e) => assign(e.target.getAttribute("data-assign"), e.target.value));
+          // When the dropdown closes, apply any update we skipped while it was open.
+          s.addEventListener("blur", () => { if (pendingZoneRender) renderZones(lastState); });
+        });
+        el.querySelectorAll("input[data-code]").forEach((inp) =>
+          inp.addEventListener("blur", () => { if (pendingZoneRender) renderZones(lastState); }));
+        el.querySelectorAll("button[data-setcode]").forEach((b) =>
+          b.addEventListener("click", () => {
+            const id = b.getAttribute("data-setcode");
+            const v = el.querySelector('input[data-code="' + CSS.escape(id) + '"]').value.trim();
+            if (v) assign(id, v);
+          }));
+        el.querySelectorAll("button[data-delroom]").forEach((b) =>
+          b.addEventListener("click", (e) => deleteRoom(e.target.getAttribute("data-delroom"))));
+      }
+
+      function render(state) {
+        lastState = state;
+        renderPairing(state);
+        renderClock();
+        renderZones(state);
+
+        const alarmsEl = document.getElementById("alarms");
+        const active = state.alarms.filter((a) => a.status !== "resolved");
+        alarmsEl.innerHTML = active.length === 0
+          ? '<div class="empty">No alarms.</div>'
+          : active.map((a) =>
+              '<div class="alarm ' + a.severity + '"><div>' +
+                '<span class="badge ' + a.severity + '">' + a.severity.toUpperCase() + "</span> " +
+                '<span class="msg">' + esc(a.message) + "</span>" +
+                '<div class="when">&#128205; ' + esc(fmtLoc(a.location)) + " &middot; since " + fmtTime(a.raisedAt) + "</div></div>" +
+                '<button class="resolve-btn" onclick="resolveAlarm(\'' + esc(a.alarmId) + '\')">Resolve</button></div>'
+            ).join("");
+
+        const eventsEl = document.getElementById("events");
+        eventsEl.innerHTML = state.events.length === 0
+          ? '<div class="empty">No events yet.</div>'
+          : state.events.map((e) =>
+              '<div class="event"><span class="badge ' + e.severity + '">' + e.severity + "</span> " +
+              fmtTime(e.detectedAt) + " &middot; " + esc(e.message) + "</div>"
+            ).join("");
+      }
+
+      const conn = document.getElementById("conn");
+      const es = new EventSource("/api/stream");
+      es.onopen = () => { conn.textContent = "live connected"; conn.style.color = "var(--ok)"; };
+      es.onerror = () => { conn.textContent = "connection lost - reconnecting …"; conn.style.color = "var(--warn)"; };
+      es.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch (e) { console.error(e); } };
+    </script>
+  </body>
+</html>

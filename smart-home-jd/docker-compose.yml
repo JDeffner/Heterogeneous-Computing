@@ -1,0 +1,16 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: alsh-mosquitto
+    ports:
+      - "1883:1883"   # MQTT
+      - "9001:9001"   # MQTT over WebSockets (optional, for browser clients)
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-log:/mosquitto/log
+    restart: unless-stopped
+
+# Persistence is disabled in mosquitto.conf, so no data volume is needed:
+# retained messages live only in memory and are cleared on a broker restart.
+volumes:
+  mosquitto-log:

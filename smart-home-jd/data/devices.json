@@ -1,0 +1,233 @@
+[
+  {
+    "deviceId": "motion-mqo9zeto-f9hm8",
+    "type": "motion",
+    "name": "Motion sensor - Living Room",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Living Room",
+      "roomId": "living-room-1ccia"
+    },
+    "serialNumber": "SN-SML002-demo42",
+    "manufacturer": "Philips Hue",
+    "model": "SML-002",
+    "protocol": "Zigbee",
+    "powerSource": "battery",
+    "firmware": "sim-2.1.0",
+    "capabilities": [
+      "motion.detected",
+      "motion.lux"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:05:07.788Z",
+    "lastSeen": "2026-06-21T21:16:18.046Z"
+  },
+  {
+    "deviceId": "door-mqoa1x22-m4t9c",
+    "type": "door",
+    "name": "Door / contact sensor - Living Room",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Living Room",
+      "roomId": "living-room-1ccia"
+    },
+    "serialNumber": "SN-DWS100-3c4d5e",
+    "manufacturer": "Aqara",
+    "model": "DW-S100",
+    "protocol": "Zigbee",
+    "powerSource": "battery",
+    "firmware": "sim-2.1.0",
+    "capabilities": [
+      "door.open"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:05:22.000Z",
+    "lastSeen": "2026-06-21T21:16:18.095Z"
+  },
+  {
+    "deviceId": "stove-mqoa1x00-k2p7a",
+    "type": "stove",
+    "name": "Stove guard - Kitchen",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Kitchen",
+      "roomId": "kitchen-7t2pa"
+    },
+    "serialNumber": "SN-GuardZ-1a2b3c",
+    "manufacturer": "Inirv",
+    "model": "Guard-Z",
+    "protocol": "Z-Wave",
+    "powerSource": "mains",
+    "firmware": "sim-1.4.2",
+    "capabilities": [
+      "stove.on",
+      "stove.temp"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:05:29.000Z",
+    "lastSeen": "2026-06-21T21:16:18.175Z"
+  },
+  {
+    "deviceId": "motion-mqoa1x11-q8r3b",
+    "type": "motion",
+    "name": "Motion sensor - Kitchen",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Kitchen",
+      "roomId": "kitchen-7t2pa"
+    },
+    "serialNumber": "SN-SML002-2b3c4d",
+    "manufacturer": "Philips Hue",
+    "model": "SML-002",
+    "protocol": "Zigbee",
+    "powerSource": "battery",
+    "firmware": "sim-2.1.0",
+    "capabilities": [
+      "motion.detected",
+      "motion.lux"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:05:36.000Z",
+    "lastSeen": "2026-06-21T21:16:18.222Z"
+  },
+  {
+    "deviceId": "bed-mqoa1x33-z1v6d",
+    "type": "bed",
+    "name": "Bed occupancy sensor - Bedroom",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Bedroom",
+      "roomId": "bedroom-4m9kd"
+    },
+    "serialNumber": "SN-QSCare-4d5e6f",
+    "manufacturer": "Emfit",
+    "model": "QS-Care",
+    "protocol": "Wi-Fi",
+    "powerSource": "mains",
+    "firmware": "sim-3.0.4",
+    "capabilities": [
+      "bed.occupied",
+      "bed.heartRate"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:05:43.000Z",
+    "lastSeen": "2026-06-21T21:16:18.270Z"
+  },
+  {
+    "deviceId": "motion-mqoa1x44-w7y2e",
+    "type": "motion",
+    "name": "Motion sensor - Bedroom",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Bedroom",
+      "roomId": "bedroom-4m9kd"
+    },
+    "serialNumber": "SN-SML002-5e6f70",
+    "manufacturer": "Philips Hue",
+    "model": "SML-002",
+    "protocol": "Zigbee",
+    "powerSource": "battery",
+    "firmware": "sim-2.1.0",
+    "capabilities": [
+      "motion.detected",
+      "motion.lux"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:05:50.000Z",
+    "lastSeen": "2026-06-21T21:16:18.314Z"
+  },
+  {
+    "deviceId": "motion-mqoa1x55-h3n8f",
+    "type": "motion",
+    "name": "Motion sensor - Bathroom",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Bathroom",
+      "roomId": "bathroom-hiezp"
+    },
+    "serialNumber": "SN-SML002-6f7081",
+    "manufacturer": "Philips Hue",
+    "model": "SML-002",
+    "protocol": "Zigbee",
+    "powerSource": "battery",
+    "firmware": "sim-2.1.0",
+    "capabilities": [
+      "motion.detected",
+      "motion.lux"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:05:57.000Z",
+    "lastSeen": "2026-06-21T21:16:18.405Z"
+  },
+  {
+    "deviceId": "door-mqoa1x66-c9b4g",
+    "type": "door",
+    "name": "Door / contact sensor - Hallway",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Hallway",
+      "roomId": "hallway-2x6vn"
+    },
+    "serialNumber": "SN-DWS100-708192",
+    "manufacturer": "Aqara",
+    "model": "DW-S100",
+    "protocol": "Zigbee",
+    "powerSource": "battery",
+    "firmware": "sim-2.1.0",
+    "capabilities": [
+      "door.open"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:06:04.000Z",
+    "lastSeen": "2026-06-21T21:16:18.450Z"
+  },
+  {
+    "deviceId": "motion-mqoa1x77-r5k1h",
+    "type": "motion",
+    "name": "Motion sensor - Hallway",
+    "location": {
+      "building": "House A",
+      "floor": "Ground floor",
+      "room": "Hallway",
+      "roomId": "hallway-2x6vn"
+    },
+    "serialNumber": "SN-SML002-8192a3",
+    "manufacturer": "Philips Hue",
+    "model": "SML-002",
+    "protocol": "Zigbee",
+    "powerSource": "battery",
+    "firmware": "sim-2.1.0",
+    "capabilities": [
+      "motion.detected",
+      "motion.lux"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:06:11.000Z",
+    "lastSeen": "2026-06-21T21:16:18.540Z"
+  },
+  {
+    "deviceId": "sos-mqoa1x88-t6d2j",
+    "type": "sos",
+    "name": "SOS panic button (unassigned)",
+    "serialNumber": "SN-SOSPendant-92a3b4",
+    "manufacturer": "CareTech",
+    "model": "SOS-Pendant",
+    "protocol": "BLE",
+    "powerSource": "battery",
+    "firmware": "sim-1.0.1",
+    "capabilities": [
+      "sos.pressed"
+    ],
+    "status": "online",
+    "registeredAt": "2026-06-21T21:06:18.000Z",
+    "lastSeen": "2026-06-21T21:16:18.590Z"
+  }
+]

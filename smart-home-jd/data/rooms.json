@@ -1,0 +1,37 @@
+[
+  {
+    "roomId": "bathroom-hiezp",
+    "building": "House A",
+    "floor": "Ground floor",
+    "room": "Bathroom",
+    "createdAt": "2026-06-21T21:04:32.371Z"
+  },
+  {
+    "roomId": "living-room-1ccia",
+    "building": "House A",
+    "floor": "Ground floor",
+    "room": "Living Room",
+    "createdAt": "2026-06-21T21:04:43.712Z"
+  },
+  {
+    "roomId": "kitchen-7t2pa",
+    "building": "House A",
+    "floor": "Ground floor",
+    "room": "Kitchen",
+    "createdAt": "2026-06-21T21:05:01.000Z"
+  },
+  {
+    "roomId": "bedroom-4m9kd",
+    "building": "House A",
+    "floor": "Ground floor",
+    "room": "Bedroom",
+    "createdAt": "2026-06-21T21:05:08.000Z"
+  },
+  {
+    "roomId": "hallway-2x6vn",
+    "building": "House A",
+    "floor": "Ground floor",
+    "room": "Hallway",
+    "createdAt": "2026-06-21T21:05:15.000Z"
+  }
+]
