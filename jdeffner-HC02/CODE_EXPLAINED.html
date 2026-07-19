@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HC02 · The Code, Explained</title>
+<style>
+  :root {
+    --bg: #f6f7f5; --stage: #fdfefc; --ink: #1c2420; --muted: #5a675f;
+    --faint: #8a968d; --line: #dde4dd; --line-soft: #e9eee8;
+    --gpu: #3e8914; --gpu-deep: #2f6e0e; --gpu-soft: #e3efd9;
+    --cpu: #4a6fa5; --cpu-soft: #e2e9f3;
+    --pend: #a1761c; --pend-soft: #f5ead2;
+    --code-bg: #eef1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d120e; --stage: #141b15; --ink: #e9eee9; --muted: #9aa79d;
+      --faint: #6b776e; --line: #263028; --line-soft: #1d251e;
+      --gpu: #7bc950; --gpu-deep: #9ad973; --gpu-soft: #1e2b18;
+      --cpu: #82a8d8; --cpu-soft: #1a2330;
+      --pend: #d9a544; --pend-soft: #2c2415;
+      --code-bg: #1a231b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px; line-height: 1.65;
+  }
+  .mono, code, pre { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; }
+
+  #layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); max-width: 1180px; margin: 0 auto; gap: 40px; padding: 0 24px; }
+  @media (max-width: 900px) { #layout { grid-template-columns: minmax(0, 1fr); } #toc { display: none; } }
+
+  #toc { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 42px 0 24px; }
+  #toc .toc-title { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin-bottom: 14px; font-family: Consolas, monospace; }
+  #toc a { display: block; padding: 4px 10px; color: var(--muted); text-decoration: none; font-size: 14px; border-left: 2px solid var(--line); line-height: 1.4; }
+  #toc a:hover { color: var(--ink); }
+  #toc a.active { color: var(--gpu); border-left-color: var(--gpu); font-weight: 600; }
+  #toc a.sub { padding-left: 24px; font-size: 13px; }
+
+  main { max-width: 47rem; padding: 42px 0 90px; min-width: 0; }
+  .eyebrow { font-family: Consolas, monospace; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow b { color: var(--gpu); font-weight: 600; }
+  h1 { font-size: 42px; line-height: 1.08; letter-spacing: -0.02em; margin: 10px 0 14px; font-weight: 750; text-wrap: balance; }
+  .lede { font-size: 19px; color: var(--muted); margin: 0 0 22px; }
+
+  section { margin-top: 58px; }
+  h2 { font-size: 27px; letter-spacing: -0.015em; margin: 0 0 6px; font-weight: 720; }
+  h2 .no { color: var(--faint); font-weight: 500; margin-right: 10px; font-family: Consolas, monospace; font-size: 21px; }
+  h2 code, h1 code { font-size: .85em; }
+  h3 { font-size: 19px; margin: 30px 0 8px; letter-spacing: -0.01em; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 24px; }
+  li { margin: 7px 0; }
+  a { color: var(--gpu-deep); }
+  hr.sect { border: none; border-top: 1px solid var(--line); margin: 0 0 18px; }
+
+  code { background: var(--code-bg); border-radius: 4px; padding: 1.5px 6px; font-size: .86em; }
+  pre { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 8px; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.55; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  pre .c { color: var(--faint); }
+
+  .card { border: 1px solid var(--line); border-radius: 8px; background: var(--stage); padding: 16px 20px; margin: 14px 0; }
+  .card .tag { font-family: Consolas, monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gpu); display: block; margin-bottom: 6px; }
+  .card.warn { background: var(--pend-soft); border-color: var(--pend); }
+  .card.warn .tag { color: var(--pend); }
+  .card.cpu .tag { color: var(--cpu); }
+  .card > :last-child { margin-bottom: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* pipeline diagram */
+  .pipe { display: flex; align-items: stretch; gap: 0; margin: 20px 0; flex-wrap: wrap; }
+  .pipe .stage-box { flex: 1 1 130px; border: 1px solid var(--line); background: var(--stage); border-radius: 8px; padding: 12px 14px; min-width: 130px; }
+  .pipe .stage-box .lang { font-family: Consolas, monospace; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gpu); display: block; margin-bottom: 4px; }
+  .pipe .stage-box b { font-size: 14.5px; display: block; }
+  .pipe .stage-box span { font-size: 12.5px; color: var(--muted); line-height: 1.4; display: block; margin-top: 3px; }
+  .pipe .arr { align-self: center; color: var(--faint); padding: 0 8px; font-size: 20px; flex: none; }
+
+  dfn { font-style: normal; font-weight: 650; color: var(--gpu-deep); }
+
+  footer { margin-top: 70px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--faint); font-size: 13.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="layout">
+
+<nav id="toc">
+  <div class="toc-title">HC02 · Code, explained</div>
+  <a href="#big">0 · The big picture</a>
+  <a href="#common">1 · common.cuh</a>
+  <a href="#cudacheck" class="sub">CUDA_CHECK</a>
+  <a href="#events" class="sub">timing with events</a>
+  <a href="#devinfo" class="sub">device info</a>
+  <a href="#task1">2 · task1_divergence.cu</a>
+  <a href="#refresher" class="sub">CUDA refresher</a>
+  <a href="#fma" class="sub">the FMA chain</a>
+  <a href="#scaling" class="sub">experiment A</a>
+  <a href="#war" class="sub">the compiler war</a>
+  <a href="#looplen" class="sub">looplen variant</a>
+  <a href="#cpu">3 · cpu_baseline.cpp</a>
+  <a href="#task2">4 · task2_bandwidth.cu</a>
+  <a href="#patterns" class="sub">three patterns</a>
+  <a href="#occup" class="sub">occupancy knobs</a>
+  <a href="#cmake">5 · CMakeLists.txt</a>
+  <a href="#bash">6 · run_all.sh</a>
+  <a href="#python">7 · plot.py (Python 101)</a>
+  <a href="#notebook">8 · the notebook</a>
+  <a href="#cross">9 · cross-cutting decisions</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Heterogeneous Computing · <b>Übungsblatt 2</b> · study companion</div>
+    <h1>The code, explained line by line</h1>
+    <p class="lede">What each file in <span class="mono">blatt02/</span> does, what each non-obvious line means, and
+      why it was written that way. Assumes the course material (SIMT, warps, occupancy, coalescing) and general
+      programming, but no Python, no CMake, no bash, and only basic CUDA.</p>
+    <p style="color:var(--faint); font-size:14px">This document lives outside <span class="mono">blatt02/</span> so
+      it never ends up in the PR. See also: <a href="HC02_SPEC.html">the spec</a> ·
+      <a href="presentation/HC02_slides.html">slide deck</a>.</p>
+  </header>
+
+  <section id="big">
+    <h2><span class="no">0</span>The big picture</h2>
+    <hr class="sect">
+    <p>The project is a measurement pipeline. Four languages, one direction of data flow:</p>
+    <div class="pipe">
+      <div class="stage-box"><span class="lang">C++ / CUDA</span><b>3 binaries</b>
+        <span>task1_divergence, task2_bandwidth, cpu_baseline &mdash; print CSV to the terminal</span></div>
+      <div class="arr">&rarr;</div>
+      <div class="stage-box"><span class="lang">bash</span><b>run_all.sh</b>
+        <span>runs every sweep, redirects the CSVs into results/</span></div>
+      <div class="arr">&rarr;</div>
+      <div class="stage-box"><span class="lang">Python</span><b>plot.py</b>
+        <span>reads the CSVs, writes the PNGs, prints the report numbers</span></div>
+      <div class="arr">&rarr;</div>
+      <div class="stage-box"><span class="lang">Markdown</span><b>REPORT.md</b>
+        <span>embeds the PNGs, cites the numbers</span></div>
+    </div>
+    <p>Two design decisions shape everything:</p>
+    <ol>
+      <li><dfn>CSV is the interface.</dfn> The C++ programs do not draw plots and Python does not measure anything.
+        Each binary prints a comma-separated table to standard output; the shell script redirects that text into
+        files under <code>results/</code>; Python reads those files. Every intermediate result is a plain text file
+        you can open, inspect, commit to git, and cite. Nothing is hidden in program memory.</li>
+      <li><dfn>stdout vs stderr.</dfn> Every program has two output channels. <em>Standard output</em> carries the
+        machine-readable CSV. <em>Standard error</em> carries everything meant for humans: device info, validation
+        messages, errors. This matters because <code>run_all.sh</code> redirects stdout into the CSV file; if the
+        device dump went to stdout too, it would corrupt the CSV. With the split, you still see the human messages
+        in the terminal while the clean CSV lands in the file.</li>
+    </ol>
+    <p>The laptop has an AMD GPU, so the CUDA parts cannot run locally. The pipeline therefore runs unattended on
+      Google Colab (free NVIDIA T4): <code>colab/run_colab.ipynb</code> clones the repo, builds, runs
+      <code>run_all.sh</code> and <code>plot.py</code>, and hands you a zip of <code>results/</code>.</p>
+  </section>
+
+  <section id="common">
+    <h2><span class="no">1</span><code>src/common.cuh</code> · shared plumbing</h2>
+    <hr class="sect">
+    <p>A <code>.cuh</code> file is a CUDA header: code textually pasted into every <code>.cu</code> file that writes
+      <code>#include "common.cuh"</code>. The first line, <code>#pragma once</code>, tells the compiler &ldquo;if
+      this file gets included twice, only paste it once&rdquo;, preventing duplicate-definition errors.</p>
+
+    <h3 id="cudacheck">1.1 <code>CUDA_CHECK</code>: never ignore an error</h3>
+    <p>Almost every CUDA API function returns an error code instead of throwing an exception. Ignore those codes and
+      a failed allocation silently produces garbage numbers ten lines later. So every CUDA call is wrapped:</p>
+    <pre><code>CUDA_CHECK(cudaMalloc(&amp;da, sizeof(float) * n));</code></pre>
+    <p><code>CUDA_CHECK</code> is a <dfn>macro</dfn>: a text substitution performed before compilation. It expands to
+      &ldquo;run the call, store the returned code, and if it is not <code>cudaSuccess</code>, print the file name
+      and line number and kill the program&rdquo;. <code>__FILE__</code> and <code>__LINE__</code> are placeholders
+      the compiler replaces with the location of the macro use, so an error message points at the exact offending
+      line. The odd-looking <code>do { … } while (0)</code> wrapper is a standard C idiom: it turns the
+      multi-statement macro body into a single statement, so the macro behaves correctly inside an
+      <code>if</code>/<code>else</code> without braces.</p>
+
+    <h3 id="events">1.2 Timing with CUDA events</h3>
+    <p>Timing GPU code has a trap: a kernel launch is <dfn>asynchronous</dfn>. The line
+      <code>kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(…)</code> returns immediately, while the GPU is still working.
+      A normal CPU clock would measure the cost of <em>enqueueing</em> the launch (microseconds), not of running it.
+      CUDA events solve this: an event is a timestamp marker inserted into the GPU&rsquo;s own command stream.</p>
+    <pre><code>cudaEventRecord(start);      <span class="c">// marker before the kernel</span>
+kernel&lt;&lt;&lt;...&gt;&gt;&gt;(...);
+cudaEventRecord(stop);       <span class="c">// marker after the kernel</span>
+cudaEventSynchronize(stop);  <span class="c">// CPU waits until the GPU reached 'stop'</span>
+cudaEventElapsedTime(&amp;ms, start, stop);  <span class="c">// GPU-side time between markers</span></code></pre>
+    <p>Both markers live on the GPU timeline, so the measured span contains exactly the kernel and nothing else. In
+      particular, host&harr;device copies are <em>outside</em> the timed region, as the spec requires.</p>
+    <p><code>time_median_ms()</code> wraps this in the convention used everywhere:</p>
+    <ul>
+      <li><b>3 warmup launches</b> first. The very first launch pays one-time costs (code upload, cache population,
+        clock ramp-up). Warmups absorb that.</li>
+      <li><b>10 timed launches, report the median.</b> A cloud GPU is noisy. The median (sort, take the middle) is
+        robust against outliers, unlike the mean, where one hiccup shifts the result. With an even count there are
+        two middle values, so the code averages the 5th and 6th.</li>
+    </ul>
+    <p><code>time_median_ms</code> takes the code to run as a parameter, written at the call site as a
+      <dfn>lambda</dfn>, an unnamed inline function:</p>
+    <pre><code>float t = time_median_ms([&amp;] { kernel_uniform&lt;&lt;&lt;grid, block&gt;&gt;&gt;(da, db, n, k); });</code></pre>
+    <p><code>[&amp;]</code> means &ldquo;the body may use the surrounding variables (<code>grid</code>,
+      <code>da</code>, …)&rdquo;. One timing function serves every kernel in the project.</p>
+
+    <h3 id="devinfo">1.3 Device info and provenance</h3>
+    <p><code>query_device_info()</code> asks the driver for the GPU&rsquo;s properties: name, compute capability, SM
+      count, and so on. This replaces the <code>deviceQuery</code> sample the sheet mentions. Two attributes need
+      special care: <b>memory clock and bus width were removed from newer CUDA headers</b> (this actually bit on
+      Colab&rsquo;s CUDA 12.8, where the named constant no longer compiles; the code queries the stable numeric
+      attribute IDs 36/37 instead and checks the return value rather than using <code>CUDA_CHECK</code>, printing
+      <code>n/a</code> when the runtime refuses). When both exist, the theoretical peak bandwidth is</p>
+    <pre><code>peak = 2 × memory clock [Hz] × bus width [bytes]</code></pre>
+    <p>The factor 2 is DDR memory: it transfers data on both edges of the clock.</p>
+    <p><code>print_csv_provenance()</code> prints one comment line at the top of each CSV, e.g.
+      <code># gpu=Tesla T4, cc=7.5, driver=13.0, toolkit=12.8</code>. Months later you can still tell which hardware
+      produced a given results file. The leading <code>#</code> marks it as a comment; <code>plot.py</code> tells
+      pandas to skip such lines.</p>
+  </section>
+
+  <section id="task1">
+    <h2><span class="no">2</span><code>src/task1_divergence.cu</code> · the compute benchmark</h2>
+    <hr class="sect">
+
+    <h3 id="refresher">2.1 Thirty-second CUDA refresher</h3>
+    <p>A <code>__global__</code> function is a <dfn>kernel</dfn>: code that runs on the GPU, once per thread. The
+      launch <code>kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(args)</code> starts <code>grid × block</code> threads,
+      organized in blocks of <code>block</code> threads. Inside the kernel each thread computes its own global
+      index:</p>
+    <pre><code>int i = blockIdx.x * blockDim.x + threadIdx.x;
+if (i &lt; n) ...   <span class="c">// guard: the last block may be partly out of range</span></code></pre>
+    <p>Hardware-wise, each group of 32 consecutive threads of a block is a <dfn>warp</dfn> and executes in lockstep.
+      That is the whole reason Task 1 exists.</p>
+
+    <h3 id="fma">2.2 The workload: an FMA chain</h3>
+    <p>The spec wants a <em>compute-bound</em> kernel: minimal memory traffic, maximal arithmetic. Each thread reads
+      one <code>float</code>, runs <code>k = 1024</code> iterations of arithmetic on it, writes one
+      <code>float</code>. The unit is <code>fmaf(x, a, b)</code>, the fused multiply-add <code>x·a + b</code>: one
+      instruction, counted as 2 FLOP, which makes the bookkeeping trivial (<code>FLOPs = 2·n·k</code>).</p>
+    <div class="card warn">
+      <span class="tag">Three traps the details exist to avoid</span>
+      <ul>
+        <li><b>Dead-code elimination.</b> If the result were never used, the compiler would delete the entire loop
+          and you would measure an empty kernel. Hence every thread writes its result to global memory.</li>
+        <li><b>Loop collapsing.</b> If the loop were mathematically foldable, the compiler could replace 1024
+          iterations with a closed formula. It is not, for two reasons: floating-point math is not associative, so
+          without <code>-use_fast_math</code> (deliberately off) the compiler must not reorder it; and each
+          iteration feeds its result into the next (<code>x = fmaf(x, …)</code>), a serial dependence chain with
+          varying constants.</li>
+        <li><b>Numeric blow-up.</b> 1024 repeated multiplications explode to infinity or decay to zero unless the
+          map is chosen carefully. Every operation used is a <em>contraction toward 1</em>:
+          <code>x·a + (1−a)</code> with <code>a</code> slightly below 1 has fixed point exactly 1, and
+          <code>x·(1+m)</code> with tiny negative <code>m</code> shrinks x slightly. Values stay in a small band
+          around 1 forever, so there is no special-case timing for infinities or denormals.</li>
+      </ul>
+    </div>
+
+    <h3 id="scaling">2.3 Experiment A: throughput scaling</h3>
+    <p><code>run_scaling()</code> sweeps n over 2<sup>10</sup>, 2<sup>12</sup>, …, 2<sup>26</sup> with everything
+      else fixed, timing the <em>uniform</em> kernel (every thread runs the identical path 0). The point: a GPU only
+      reaches its rated GFLOP/s when there are vastly more threads than cores, because it hides instruction latency
+      by switching between resident warps. Small n = few warps = idle SMs. The CSV lets the report read off exactly
+      where saturation happens.</p>
+    <p>Implementation notes: the arrays are allocated once at the maximum size, and the sweep only varies how many
+      elements the kernel touches, avoiding re-allocation per step. <code>n &lt;&lt;= 2</code> is a bit-shift:
+      multiply n by 4 each iteration, producing the 2<sup>10</sup>, 2<sup>12</sup>, … progression.</p>
+
+    <h3 id="war">2.4 Experiment B: controlled divergence, and the compiler war</h3>
+    <p>Goal: force a warp to execute <code>d</code> <em>different</em> code paths and measure the slowdown. The
+      kernel branches on <code>threadIdx.x % d</code>. Since d divides 32, each warp contains all d residues, so
+      each warp must run all d paths. SIMT hardware serializes them; the ideal expectation is a slowdown of exactly
+      d.</p>
+    <p>The hard part is not the branching, it is <em>keeping</em> the branching: if the d branch bodies are
+      structurally identical and differ only in constants, the compiler merges them into one path with a constant
+      lookup, and your &ldquo;divergence benchmark&rdquo; measures nothing. Three defenses are layered here:</p>
+    <div class="card">
+      <span class="tag">Defense in depth against branch merging</span>
+      <ol>
+        <li><b>Distinct constants per path.</b> Path P uses constants derived from P
+          (<code>0.999 − 0.00001·P</code> etc.), so no two paths are byte-identical.</li>
+        <li><b>Distinct instruction order per path.</b> Even paths run the four FMAs in order A,B,A&prime;,B&prime;;
+          odd paths in order B,A&prime;,B&prime;,A. Different dataflow means the &ldquo;merge identical code&rdquo;
+          optimization cannot fire.</li>
+        <li><b><code>__noinline__</code>.</b> Each path is compiled as a genuinely separate function that must be
+          called, not pasted inline. Separate functions cannot be merged into one branch body at all.</li>
+      </ol>
+    </div>
+    <p>At the same time, <b>every path does exactly the same amount of work</b>: k iterations, one FMA each. This is
+      the critical design rule from the spec. If path 3 were more expensive than path 0, a slowdown could be blamed
+      on workload imbalance; with equal work, any slowdown is pure serialization.</p>
+    <p>How 32 paths exist without writing 32 functions by hand: <code>run_path</code> is a <dfn>template</dfn>,
+      <code>template &lt;int P&gt; float run_path(float x, int k)</code>. A template is a recipe the compiler stamps
+      out once per value of P you use; <code>run_path&lt;7&gt;</code> and <code>run_path&lt;12&gt;</code> are two
+      distinct compiled functions with their own constants baked in. The <code>if constexpr (P % 2 == 0)</code>
+      inside is a <em>compile-time</em> if: for a given P only one of the two orderings survives into the compiled
+      code, at zero runtime cost. Because P must be known at compile time but <code>threadIdx.x % d</code> is a
+      runtime value, <code>dispatch_path()</code> bridges the two with a <code>switch</code> over all 32 cases,
+      generated by a small macro (<code>HC_CASE(P)</code> expands to <code>case P: return run_path&lt;P&gt;(x, k);</code>).</p>
+    <p>Sanity check if the measured d=32 slowdown were suspiciously small: <code>nvcc --ptxas-options=-v</code> and
+      inspect the generated code, per spec §3.3. (The real run measured 21.3×, comfortably past the ~8× gate.)</p>
+
+    <h3 id="looplen">2.5 The <code>looplen</code> variant</h3>
+    <p>A second way to create divergence: all threads run the <em>same</em> code, but with data-dependent trip
+      counts. Lane residue r gets <code>k_r = 2k(1+r)/(d+1)</code> iterations. That formula is chosen so the
+      <em>sum</em> over a warp is again 32·k, exactly the same total work as the uniform kernel (each residue occurs
+      32/d times, and the arithmetic series sums to 32k).</p>
+    <p>Expected result, and why it differs from the branch variant: a warp is only finished when its <em>slowest</em>
+      lane is finished, so the warp time follows <code>max(k_r) ≈ 2k</code>, a saturating slowdown of about 2 instead
+      of d. Same mechanism (lanes waiting for each other), different signature. The <code>&amp; ~3</code> rounds the
+      trip count down to a multiple of 4 because the loop is unrolled in groups of four FMAs. (Measured: saturates at
+      1.92×.)</p>
+
+    <h3>2.6 The host code (main, flags, sweeps)</h3>
+    <p><code>parse_args</code> is a deliberately primitive command-line parser (the spec bans libraries): it walks
+      the argument array, <code>strcmp</code>s each entry against the known flags, and converts the following string
+      to a number with <code>atoi</code>. All three binaries follow this pattern and print a usage text on
+      <code>--help</code>. <code>gflops_of</code> computes <code>2·n·k / seconds / 10⁹</code>; the
+      <code>slowdown_vs_d1</code> column is filled by remembering the d=1 time of the current mode and dividing.</p>
+  </section>
+
+  <section id="cpu">
+    <h2><span class="no">3</span><code>src/cpu_baseline.cpp</code> · the same workload on the CPU</h2>
+    <hr class="sect">
+    <p>This file exists so the report can <em>measure</em>, not merely claim, that a CPU behaves differently: flat
+      performance over n (Experiment A) and near-zero divergence penalty (Experiment B). It contains a byte-for-byte
+      copy of the 32-path code from the CUDA file (with <code>__attribute__((noinline))</code>, the GCC spelling of
+      noinline). The duplication is deliberate: the spec fixes the file list, and a shared header between CUDA and
+      plain C++ would have needed an extra file. A comment in both files says &ldquo;keep in sync&rdquo;.</p>
+    <p>New concepts relative to the CUDA file:</p>
+    <ul>
+      <li><dfn>OpenMP</dfn> parallelizes the element loop across CPU cores with one line:
+        <code>#pragma omp parallel for num_threads(threads)</code>. The compiler splits the iterations of the
+        following <code>for</code> among threads. <code>threads = 1</code> gives the single-core baseline
+        (<code>cpu1</code>), all cores the multicore baseline (<code>cpuN</code>).</li>
+      <li><dfn>std::chrono::steady_clock</dfn> replaces CUDA events; CPU code is synchronous, so an ordinary
+        monotonic wall clock is correct. Same convention: 3 warmups, median of 10.</li>
+      <li><dfn>The consume() trick.</dfn> <code>volatile float sink = b[n/2];</code> reads one result through a
+        <code>volatile</code> variable, which the compiler must not optimize away. This anchors the whole
+        computation against dead-code elimination, the CPU equivalent of &ldquo;write the result to global
+        memory&rdquo;.</li>
+    </ul>
+    <p>Two pragmatic deviations from the GPU sweeps, both documented in the report:</p>
+    <ul>
+      <li>The n sweep stops at 2<sup>20</sup> (GPU: 2<sup>26</sup>) and the divergence run uses 2<sup>18</sup>
+        (GPU: 2<sup>24</sup>). At 2<sup>26</sup> a single Colab CPU point would take minutes (13 runs × ~70 s), and
+        CPU GFLOP/s is flat over n anyway, which is the very thing being demonstrated. The CSV contains an
+        <code>n</code> column, so the difference is transparent, and GFLOP/s and slowdown are size-independent
+        metrics.</li>
+      <li>The scaling CSV has a <code>block</code> column (from the GPU schema); CPU rows store the thread count
+        there instead of leaving a hole.</li>
+    </ul>
+    <p>The <code>--no-header</code> flag exists purely for <code>run_all.sh</code>: when CPU rows are
+      <em>appended</em> to the GPU CSV, a second header line in the middle of the file would confuse pandas. The
+      provenance comment still gets printed because <code>#</code> lines are skipped anyway.</p>
+  </section>
+
+  <section id="task2">
+    <h2><span class="no">4</span><code>src/task2_bandwidth.cu</code> · the memory benchmark</h2>
+    <hr class="sect">
+    <p>Task 2 flips the regime: minimal arithmetic, maximal memory traffic. The kernel is
+      <code>b[j] = a[j] · c</code>, one multiply per two 4-byte memory operations. The metric is effective
+      bandwidth: <code>8 bytes × n / time</code> (4 read + 4 written per element).</p>
+
+    <h3 id="patterns">4.1 The three access patterns (Experiment C)</h3>
+    <p><dfn>Coalesced</dfn> (<code>j = i</code>): thread i touches element i. The 32 threads of a warp touch 32
+      <em>consecutive</em> floats = one contiguous 128-byte region, which the hardware fetches as a single
+      transaction. Best case; its measured result is the &ldquo;practical peak&rdquo; all other numbers are
+      expressed against (<code>pct_of_peak</code>).</p>
+    <p><dfn>Strided</dfn>: thread i touches <code>j = (i mod chunk)·stride + i/chunk</code>, with
+      <code>chunk = n/stride</code>. Where the formula comes from: the naive <code>j = i·stride</code> runs out of
+      the array; the naive <code>j = (i·stride) mod n</code> stays inside but visits elements <em>multiple times</em>
+      while skipping others (and overflows 32-bit arithmetic for large i·stride). The formula used is the
+      spec&rsquo;s suggested alternative and is a clean <em>permutation</em>: think of the array as a matrix with
+      <code>stride</code> columns stored row-by-row; the formula makes consecutive threads walk down a column.
+      Consecutive threads are <code>stride</code> elements apart in memory (the divergence you want to measure), yet
+      every element is touched exactly once.</p>
+    <div class="card">
+      <span class="tag">Worked example · n = 8, stride = 4, chunk = 2</span>
+      <p class="mono" style="font-size:14px">threads 0..7 &rarr; j = 0, 4, 1, 5, 2, 6, 3, 7 &mdash; each element exactly once.</p>
+      <p>A warp now touches 32 elements spread over stride-sized gaps, so the hardware needs up to 32 separate
+        transactions where the coalesced kernel needed one; most of each fetched cache line is thrown away, and
+        effective bandwidth collapses.</p>
+    </div>
+    <p><dfn>Random gather</dfn> (<code>b[i] = a[idx[i]] · c</code>): the read address comes from an index array
+      holding a random <em>permutation</em> of 0..n−1 (so again every element exactly once). The permutation is built
+      on the host with a fixed seed (42, reproducible runs), shuffled by <code>std::shuffle</code>, and copied to the
+      GPU once, <em>outside</em> the timed region. Byte-accounting footnote (also in the report): the CSV counts
+      8 B/element of payload; the 4 B/element read of <code>idx</code> itself is physically on top, so the true
+      traffic is 1.5× the reported number.</p>
+    <div class="card">
+      <span class="tag">Validation</span>
+      <p>A wrong-but-fast kernel is worthless, so every configuration is checksummed: since all three patterns
+        compute <code>b = a·c</code> element-wise, just permuted, the <em>sum</em> of b must equal
+        <code>sum(a)·c</code> no matter the order. The host sums b in double precision and aborts on a relative
+        error above 10⁻⁵. The input values are multiples of 1/1024 in [0,1), chosen so <code>a[i]·1.5</code> is
+        exactly representable in float and the checksum is tight, not fuzzy.</p>
+    </div>
+    <p>The helper <code>fit_n()</code> asks the driver how much free memory the GPU has
+      (<code>cudaMemGetInfo</code>) and halves n until the three arrays fit into 80% of it, per the spec&rsquo;s
+      &ldquo;check free memory and halve if needed&rdquo;.</p>
+
+    <h3 id="occup">4.2 Experiment D: occupancy and latency hiding</h3>
+    <p>Question: how many resident warps does an SM need before memory latency is fully hidden? Two knobs vary the
+      number of resident warps; the y-axis is bandwidth of the <em>same</em> coalesced workload. The kernel here is
+      a <dfn>grid-stride loop</dfn>:</p>
+    <pre><code>for (int i = blockIdx.x * blockDim.x + threadIdx.x; i &lt; n;
+     i += gridDim.x * blockDim.x)
+  b[i] = a[i] * c;</code></pre>
+    <p>Instead of &ldquo;one thread = one element&rdquo;, each thread processes every (grid·block)-th element. Why:
+      the experiment launches <em>deliberately small</em> grids (exactly the blocks that fit on the SMs at the chosen
+      occupancy), and the loop guarantees the total work is always the same n elements regardless of how many threads
+      exist. Otherwise configurations would not be comparable.</p>
+    <div class="grid2">
+      <div class="card"><span class="tag">Knob 1 · block size {32 … 1024}</span>
+        <p>The runtime asks <code>cudaOccupancyMaxActiveBlocksPerMultiprocessor</code> how many blocks of this size
+          fit on one SM, launches exactly that × SM count blocks, and reports occupancy = active warps / max warps
+          per SM.</p></div>
+      <div class="card"><span class="tag">Knob 2 · shared-memory throttle</span>
+        <p>A block that <em>requests</em> dynamic shared memory occupies that much of the SM&rsquo;s budget, even if
+          the kernel never touches it. Requesting <code>smem_per_SM / m</code> bytes per block caps residency at m
+          blocks per SM; sweeping m walks occupancy up to 100% without changing the code. The third launch parameter
+          (<code>&lt;&lt;&lt;grid, block, smem&gt;&gt;&gt;</code>) is the requested byte count.</p></div>
+    </div>
+    <p>Two wrinkles: requesting more than 48 KB needs an explicit opt-in
+      (<code>cudaFuncSetAttribute(…, MaxDynamicSharedMemorySize, …)</code>), and the achieved residency is always
+      re-queried from the occupancy API and deduplicated rather than trusting the arithmetic, so the code works on
+      any GPU (spec rule: query everything, hardcode nothing).</p>
+    <p>On a T4 with block 256 the throttle can only produce 25/50/75/100% occupancy (a block is 8 warps, the SM holds
+      at most 32), which is why the spec&rsquo;s &ldquo;~12.5%&rdquo; endpoint is not reachable with this block size;
+      the block-size series adds points, and the report names this granularity. (In the real run even the 75% step
+      collapsed into 50% due to shared-memory allocation granularity.)</p>
+    <p>Why <em>theoretical</em> occupancy: the profiler metric would need Nsight Compute counter permissions, which
+      Colab normally denies. The notebook contains an optional <code>ncu</code> cell to try anyway; the
+      report&rsquo;s Limitations section covers the fallback.</p>
+  </section>
+
+  <section id="cmake">
+    <h2><span class="no">5</span><code>CMakeLists.txt</code> · the build recipe</h2>
+    <hr class="sect">
+    <p>CMake is a build-system generator: you declare <em>what</em> to build and it works out the compiler commands.
+      Top to bottom:</p>
+    <ul>
+      <li><code>cmake_minimum_required(VERSION 3.18)</code>: oldest CMake version that understands this file.</li>
+      <li>The <code>CMAKE_CUDA_ARCHITECTURES</code> block answers &ldquo;for which GPU generation should nvcc
+        generate machine code?&rdquo;. It must be decided <em>before</em> <code>project()</code> enables the CUDA
+        language. If CMake is new enough (≥ 3.24), <code>native</code> means &ldquo;whatever GPU is in this
+        machine&rdquo;, perfect for Colab. Older CMake falls back to compiling for every major architecture ≥ 7.0
+        (a &ldquo;fat binary&rdquo; that runs anywhere the spec targets). This is about <em>instruction sets</em>,
+        not the forbidden kind of hardcoding (SM counts, sizes), which are all queried at runtime.</li>
+      <li><code>project(hc02 LANGUAGES CXX CUDA)</code>: the project contains C++ and CUDA. The
+        <code>CMAKE_…_STANDARD</code> lines pin C++17 (needed for <code>if constexpr</code>).</li>
+      <li>Three <code>add_executable</code> calls declare the binaries. The
+        <code>$&lt;$&lt;COMPILE_LANGUAGE:CUDA&gt;:-Xcompiler=-Wall,-Wextra&gt;</code> generator expression means:
+        when compiling CUDA files, pass <code>-Wall -Wextra</code> through nvcc to the host compiler, satisfying the
+        checklist item &ldquo;no warnings on host code&rdquo;.</li>
+      <li><code>find_package(OpenMP REQUIRED)</code> locates OpenMP;
+        <code>target_link_libraries(… OpenMP::OpenMP_CXX)</code> attaches the right flags to
+        <code>cpu_baseline</code>. <code>-march=native</code> lets GCC use the host CPU&rsquo;s FMA instructions, so
+        the CPU baseline is not unfairly slow.</li>
+      <li><code>CMAKE_BUILD_TYPE Release</code> turns on <code>-O3</code> by default.</li>
+    </ul>
+    <p>The README carries raw <code>nvcc</code>/<code>g++</code> command lines as a fallback in case CMake
+      misbehaves on Colab.</p>
+  </section>
+
+  <section id="bash">
+    <h2><span class="no">6</span><code>scripts/run_all.sh</code> · the orchestration script</h2>
+    <hr class="sect">
+    <p>A bash script is a list of terminal commands executed top to bottom. The non-obvious lines:</p>
+    <ul>
+      <li><code>#!/usr/bin/env bash</code> (the &ldquo;shebang&rdquo;): tells the OS which interpreter runs this
+        file.</li>
+      <li><code>set -euo pipefail</code>: safety switches. <code>-e</code> aborts on the first failing command
+        (otherwise a crashed benchmark would silently produce an empty CSV and the script would carry on),
+        <code>-u</code> treats undefined variables as errors, <code>pipefail</code> makes failures inside pipelines
+        visible.</li>
+      <li><code>cd "$(dirname "$0")/.."</code>: <code>$0</code> is the path of the script itself,
+        <code>dirname</code> strips the file name, so this means &ldquo;go to the folder above
+        <code>scripts/</code>&rdquo;, i.e. <code>blatt02/</code>. The script works no matter where you call it
+        from.</li>
+      <li><code>BIN="${BIN:-build}"</code>: use the environment variable <code>BIN</code> if set, otherwise default
+        to <code>build</code>. Lets you point at a differently named build folder without editing the script.</li>
+      <li><code>&gt;</code> redirects stdout into a file (creating/overwriting); <code>&gt;&gt;</code> appends.
+        Hence: GPU binary <code>&gt;</code> creates the CSV with the header, CPU binary
+        <code>--no-header &gt;&gt;</code> appends its rows below.</li>
+    </ul>
+    <p>The whole thing is idempotent: run it twice and it simply overwrites <code>results/</code> with fresh
+      numbers.</p>
+  </section>
+
+  <section id="python">
+    <h2><span class="no">7</span><code>scripts/plot.py</code> · Python from zero</h2>
+    <hr class="sect">
+    <p>Big differences from C++ first: Python is not compiled, it executes top to bottom like a script; variables
+      have no declared types; <b>indentation is the syntax</b> for blocks (no braces; the code inside a
+      <code>for</code> is whatever is indented under it); libraries are pulled in with <code>import</code>.</p>
+
+    <h3>7.1 The imports and setup</h3>
+    <pre><code>import os, sys
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import pandas as pd</code></pre>
+    <ul>
+      <li><code>os</code> and <code>sys</code> are standard built-ins (file paths, command-line access).</li>
+      <li><dfn>matplotlib</dfn> is <em>the</em> Python plotting library. <code>matplotlib.use("Agg")</code> selects
+        the &ldquo;just render to image files&rdquo; backend before anything else, so the script works on Colab
+        where no display exists.</li>
+      <li>The <code>as plt</code> / <code>as pd</code> aliases are universal Python convention.</li>
+      <li><dfn>pandas</dfn> is a table-manipulation library. Its central object is the <code>DataFrame</code>: a
+        table with named columns, like a spreadsheet in a variable.</li>
+    </ul>
+    <pre><code>RES = sys.argv[1] if len(sys.argv) &gt; 1 else os.path.join(...)</code></pre>
+    <p><code>sys.argv</code> is the list of command-line arguments (<code>argv[0]</code> is the script name). The
+      line reads: &ldquo;if the user passed an argument, use it as the results folder, otherwise default to
+      <code>../results</code> relative to the script&rdquo;. The one-liner form (<code>A if condition else B</code>)
+      is Python&rsquo;s ternary expression. <code>os.path.join</code> glues path segments with the correct
+      separator; <code>os.path.dirname(os.path.abspath(__file__))</code> is &ldquo;the folder this script lives
+      in&rdquo;, the same trick as <code>dirname "$0"</code> in bash.
+      <code>os.makedirs(PLOTS, exist_ok=True)</code> creates the plots folder; <code>exist_ok=True</code> means
+      &ldquo;no error if it already exists&rdquo;.</p>
+
+    <h3>7.2 The helper functions</h3>
+    <pre><code>def load(name):
+    return pd.read_csv(os.path.join(RES, name), comment="#")</code></pre>
+    <p><code>def</code> defines a function. <code>pd.read_csv</code> reads a CSV into a DataFrame, using the first
+      line as column names. <code>comment="#"</code> tells it to ignore lines starting with <code>#</code>, which is
+      exactly why the provenance lines (and the CPU comment line in the middle of the appended file) are
+      harmless.</p>
+    <p><code>provenance(name, key)</code> opens a CSV, reads only its first line, and extracts a
+      <code>key=value</code> pair (used to pull <code>peak_theoretical_gbps=320.1</code> out of the comment).
+      Notable syntax: <code>line.split(", ")</code> chops a string into a list;
+      <code>part.startswith(key + "=")</code> is a string test; <code>try/except</code> is Python&rsquo;s exception
+      handling, here returning <code>None</code> (Python&rsquo;s &ldquo;nothing&rdquo;) when the value is not a
+      number, e.g. &ldquo;n/a&rdquo;.</p>
+    <p><code>save(fig, name)</code> finishes every plot the same way: <code>tight_layout()</code> auto-adjusts
+      margins so labels are not cut off, <code>savefig(…, dpi=150)</code> writes the PNG,
+      <code>plt.close(fig)</code> frees the figure&rsquo;s memory, and <code>print</code> logs the file name.
+      (<code>print(f"wrote plots/{name}")</code> is an <dfn>f-string</dfn>: inside a string prefixed with
+      <code>f</code>, any <code>{expression}</code> is replaced by its value. Python&rsquo;s printf.)</p>
+
+    <h3>7.3 One plot block in slow motion</h3>
+    <p>All four plots follow the same shape; the first one dissected:</p>
+    <pre><code>df = load("task1_scaling.csv")
+fig, ax = plt.subplots(figsize=(7, 4.5))</code></pre>
+    <p><code>df</code> (conventional name for a DataFrame) now holds the CSV as a table. <code>plt.subplots</code>
+      creates one figure (<code>fig</code>, the canvas/file) containing one axes (<code>ax</code>, the coordinate
+      system you draw into); <code>figsize</code> is in inches. The <code>fig, ax = …</code> form unpacks two
+      returned values into two variables in one line.</p>
+    <pre><code>for dev, label, style in [("gpu", "GPU", "o-"), ("cpu1", "CPU, 1 thread", "s-"), ...]:</code></pre>
+    <p>Iterates over a list of 3-element <dfn>tuples</dfn>, unpacking each into three loop variables: the body runs
+      once per curve. The style strings are matplotlib shorthand: <code>"o-"</code> circle markers joined by a solid
+      line, <code>"s-"</code> squares, <code>"^-"</code> triangles; elsewhere <code>"--"</code> is dashed,
+      <code>":"</code> dotted.</p>
+    <pre><code>sub = df[df.device == dev].sort_values("n")</code></pre>
+    <p>The single most Python-ish line in the file. <code>df.device == dev</code> compares the whole
+      <code>device</code> column against one value at once and yields a column of True/False. Indexing the DataFrame
+      with that boolean column keeps only the True rows. So this reads: &ldquo;the sub-table of rows whose device
+      equals <code>dev</code>, sorted by n&rdquo;. This filter-by-mask pattern is used for every curve.
+      <code>if not sub.empty:</code> skips curves with no data instead of crashing.</p>
+    <pre><code>ax.plot(sub.n, sub.gflops, style, label=label)</code></pre>
+    <p>Draws one curve: x from column <code>n</code>, y from column <code>gflops</code>; <code>label</code> shows up
+      in the legend.</p>
+    <pre><code>plateau = gpu.gflops.tail(4).median()
+sat_n = int(gpu[gpu.gflops &gt;= 0.95 * plateau].n.min())</code></pre>
+    <p>Finding the saturation point: the plateau level is the median of the last four points (robust against a
+      single clock-boost outlier at the largest n, which the real T4 run actually produced), and saturation is the
+      <em>smallest</em> n within 95% of it: &ldquo;the first n at which the GPU is essentially warmed up&rdquo;.
+      <code>ax.axvline</code> draws a vertical marker there and <code>ax.annotate</code> places a text label
+      (<code>sat_n.bit_length() − 1</code> computes log₂ of n for the &ldquo;n = 2^20&rdquo; label).</p>
+    <pre><code>ax.set_xscale("log", base=2)
+ax.set_yscale("log")</code></pre>
+    <p>Log axes: the x sweep is 2<sup>10</sup>…2<sup>26</sup>, so a linear axis would squash everything except the
+      last point; base 2 makes ticks land on powers of two. The y-axis is log because GPU and CPU differ by roughly
+      a factor of 1000 and both should be readable. The remaining lines set labels, title, grid, legend, then call
+      <code>save</code>.</p>
+    <p>The other three blocks repeat the pattern with small twists: plot 2 draws
+      <code>1.0 / sub.slowdown_vs_d1</code> (converting slowdown into relative throughput) plus the ideal 1/d
+      reference built with a <dfn>list comprehension</dfn>, <code>[1.0 / d for d in ds]</code>, Python&rsquo;s
+      inline &ldquo;build a list by transforming another list&rdquo;. Plot 3 uses <code>ax.axhline</code>
+      (horizontal reference lines) for the coalesced, random, and theoretical-peak levels. Plot 4 annotates each
+      point with its block size or shared-memory amount, alternating label offsets (<code>i % 3</code>) so labels at
+      the same occupancy do not overprint.</p>
+
+    <h3>7.4 The summary block</h3>
+    <p>The final block prints exactly the numbers the report needs (saturation point, peaks, d=32 slowdowns, % of
+      peak, occupancy range), so filling <code>REPORT.md</code> is a copy-paste job instead of CSV archaeology.
+      <code>float(row.slowdown_vs_d1.iloc[0])</code> shows one more pandas idiom: filtering can return a one-row
+      table, <code>.iloc[0]</code> takes the first row&rsquo;s value by position.</p>
+  </section>
+
+  <section id="notebook">
+    <h2><span class="no">8</span><code>colab/run_colab.ipynb</code> · the notebook</h2>
+    <hr class="sect">
+    <p>A Jupyter/Colab notebook is a sequence of <dfn>cells</dfn>, each either text (Markdown) or code, executed one
+      by one; the file itself is JSON. Cells run Python by default, with two escape hatches:</p>
+    <ul>
+      <li>A line starting with <code>!</code> runs a <em>shell command</em> (<code>!nvidia-smi</code>). Python
+        variables can be spliced in with braces: <code>!git clone --branch {BRANCH} {REPO_URL}</code>.</li>
+      <li>A line starting with <code>%</code> is a notebook &ldquo;magic&rdquo;. <code>%cd</code> changes the
+        working directory <em>persistently</em> across cells (a plain <code>!cd</code> would only affect its own
+        subprocess and be forgotten immediately).</li>
+    </ul>
+    <p>The cells in order: (1) run <code>nvidia-smi</code> and <code>assert</code> a GPU is present, failing fast if
+      the T4 runtime was not selected; (2) parameterized clone and <code>%cd</code> into the exercise folder,
+      skipping the clone if it already exists so re-running is harmless; (3) the CMake build; (3b) the raw-nvcc
+      fallback, wrapped in <code>if False:</code> so it is skipped unless flipped; (4) <code>run_all.sh</code>;
+      (5) <code>plot.py</code>; (6) zip <code>results/</code> and trigger a download via Colab&rsquo;s
+      <code>files.download</code>. The last Markdown cell holds the optional verification commands (ptxas info,
+      Nsight Compute attempt).</p>
+    <div class="card">
+      <span class="tag">Lesson from the real runs</span>
+      <p>Plain <code>!command</code> cells do <em>not</em> stop the notebook when the command fails: the first
+        measurement attempt &ldquo;succeeded&rdquo; with an empty zip while the build had actually broken. The build,
+        run, and plot cells were therefore rewritten to use <code>subprocess.run</code> + <code>assert</code>: they
+        print the full output, write it to <code>build.log</code>/<code>run.log</code> (which travel inside the
+        results zip), and stop &ldquo;Run all&rdquo; loudly at the exact failing step.</p>
+    </div>
+  </section>
+
+  <section id="cross">
+    <h2><span class="no">9</span>Cross-cutting decisions, in one place</h2>
+    <hr class="sect">
+    <ul>
+      <li><b>Median of 10 with 3 warmups, everywhere.</b> One convention across CPU and GPU makes every number in
+        the report comparable, stated once in the methodology section.</li>
+      <li><b>No fast math.</b> <code>-use_fast_math</code> lets the compiler fuse, reorder, and approximate, which
+        would silently change how many FLOPs actually execute. Honest counting beats bigger numbers.</li>
+      <li><b>Query, never hardcode.</b> SM count, warps per SM, shared memory sizes, peak bandwidth, free memory:
+        all read from the driver at runtime, so the binaries run unchanged on any ≥ cc 7.0 GPU.</li>
+      <li><b>Equal work under divergence.</b> The one design rule that makes Experiment B meaningful; see §2.4.</li>
+      <li><b>Validation built in.</b> Task 2 checksums every pattern against a permutation-invariant reference;
+        Task 1 anchors results against dead-code elimination. A benchmark that might be computing nothing measures
+        nothing.</li>
+      <li><b>Reproducibility.</b> Fixed RNG seed (42), provenance comment in every CSV, all committed artifacts
+        regenerable by two commands.</li>
+    </ul>
+    <div class="card">
+      <span class="tag">Status · updated 2026-07-19</span>
+      <p>The original version of this document ended with &ldquo;results/ is empty until the Colab run&rdquo;. That
+        run has since happened (T4, CUDA 12.8): <code>results/</code> holds the real CSVs, plots, and logs;
+        <code>REPORT.md</code> and the slides carry the measured numbers (d=32 slowdown 21.3×, coalesced 247 GB/s =
+        77% of peak, occupancy plateau from 50%). The first build on Colab did serve as the smoke test, and §1.3 and
+        §8 describe the two things it caught.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>HC02 · Heterogeneous Computing · 2026S</span>
+    <span class="mono"><a href="HC02_SPEC.html">spec</a> · <a href="presentation/HC02_slides.html">slides</a></span>
+  </footer>
+</main>
+</div>
+
+<script>
+  const links = [...document.querySelectorAll('#toc a')];
+  const targets = links.map(a => document.querySelector(a.hash));
+  const spy = () => {
+    let i = targets.findLastIndex(t => t && t.getBoundingClientRect().top < 120);
+    links.forEach((a, j) => a.classList.toggle('active', j === Math.max(i, 0)));
+  };
+  document.addEventListener('scroll', spy, { passive: true });
+  spy();
+</script>
+</body>
+</html>

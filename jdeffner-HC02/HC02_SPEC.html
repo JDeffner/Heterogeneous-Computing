@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HC02 Spec · SIMT, Divergence &amp; Memory Bandwidth</title>
+<style>
+  :root {
+    --bg: #f6f7f5; --stage: #fdfefc; --ink: #1c2420; --muted: #5a675f;
+    --faint: #8a968d; --line: #dde4dd; --line-soft: #e9eee8;
+    --gpu: #3e8914; --gpu-deep: #2f6e0e; --gpu-soft: #e3efd9;
+    --cpu: #4a6fa5; --cpu-soft: #e2e9f3;
+    --pend: #a1761c; --pend-soft: #f5ead2;
+    --code-bg: #eef1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d120e; --stage: #141b15; --ink: #e9eee9; --muted: #9aa79d;
+      --faint: #6b776e; --line: #263028; --line-soft: #1d251e;
+      --gpu: #7bc950; --gpu-deep: #9ad973; --gpu-soft: #1e2b18;
+      --cpu: #82a8d8; --cpu-soft: #1a2330;
+      --pend: #d9a544; --pend-soft: #2c2415;
+      --code-bg: #1a231b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px; line-height: 1.65;
+  }
+  .mono, code, pre { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; }
+
+  #layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); max-width: 1160px; margin: 0 auto; gap: 40px; padding: 0 24px; }
+  @media (max-width: 900px) { #layout { grid-template-columns: minmax(0, 1fr); } #toc { display: none; } }
+
+  /* ---------- TOC ---------- */
+  #toc { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 42px 0 24px; }
+  #toc .toc-title { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin-bottom: 14px; font-family: Consolas, monospace; }
+  #toc a { display: block; padding: 4px 10px; color: var(--muted); text-decoration: none; font-size: 14px; border-left: 2px solid var(--line); line-height: 1.4; }
+  #toc a:hover { color: var(--ink); }
+  #toc a.active { color: var(--gpu); border-left-color: var(--gpu); font-weight: 600; }
+  #toc a.sub { padding-left: 24px; font-size: 13px; }
+
+  /* ---------- article ---------- */
+  main { max-width: 46rem; padding: 42px 0 90px; min-width: 0; }
+  .eyebrow { font-family: Consolas, monospace; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow b { color: var(--gpu); font-weight: 600; }
+  h1 { font-size: 42px; line-height: 1.08; letter-spacing: -0.02em; margin: 10px 0 14px; font-weight: 750; text-wrap: balance; }
+  .lede { font-size: 19px; color: var(--muted); margin: 0 0 22px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+  .meta span { font-family: Consolas, monospace; font-size: 12.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; background: var(--stage); }
+  .meta span.hot { color: var(--pend); border-color: var(--pend); background: var(--pend-soft); }
+
+  section { margin-top: 58px; }
+  h2 { font-size: 27px; letter-spacing: -0.015em; margin: 0 0 6px; font-weight: 720; }
+  h2 .no { color: var(--faint); font-weight: 500; margin-right: 10px; font-family: Consolas, monospace; font-size: 21px; }
+  h3 { font-size: 19px; margin: 30px 0 8px; letter-spacing: -0.01em; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 24px; }
+  li { margin: 6px 0; }
+  a { color: var(--gpu-deep); }
+  hr.sect { border: none; border-top: 1px solid var(--line); margin: 0 0 18px; }
+
+  code { background: var(--code-bg); border-radius: 4px; padding: 1.5px 6px; font-size: .86em; }
+  pre { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 8px; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.55; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  .card { border: 1px solid var(--line); border-radius: 8px; background: var(--stage); padding: 16px 20px; margin: 14px 0; }
+  .card .tag { font-family: Consolas, monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gpu); display: block; margin-bottom: 6px; }
+  .card.warn .tag { color: var(--pend); }
+  .card.warn { background: var(--pend-soft); border-color: var(--pend); }
+  .card.cpu .tag { color: var(--cpu); }
+  .card > :last-child { margin-bottom: 0; }
+  .card > :first-child + * { margin-top: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 15px; }
+  th { text-align: left; font-family: Consolas, monospace; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--line); padding: 8px 10px; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; overflow-wrap: break-word; }
+  .ok { color: var(--gpu); font-weight: 700; }
+  .num { font-family: Consolas, monospace; font-size: 13.5px; }
+
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 14px 0; }
+  .kv dt { font-weight: 650; }
+  .kv dd { margin: 0; color: var(--muted); }
+
+  footer { margin-top: 70px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--faint); font-size: 13.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="layout">
+
+<nav id="toc">
+  <div class="toc-title">HC02 · Spec</div>
+  <a href="#constraints">0 · Context &amp; constraints</a>
+  <a href="#layout-s">1 · Repository layout</a>
+  <a href="#common">2 · Shared infrastructure</a>
+  <a href="#task1">3 · Task 1: divergence</a>
+  <a href="#expA" class="sub">A · throughput scaling</a>
+  <a href="#expB" class="sub">B · controlled divergence</a>
+  <a href="#task2">4 · Task 2: bandwidth</a>
+  <a href="#expC" class="sub">C · access patterns</a>
+  <a href="#expD" class="sub">D · occupancy</a>
+  <a href="#colab">5 · Colab runner</a>
+  <a href="#report">6 · Report &amp; presentation</a>
+  <a href="#checklist">7 · Acceptance checklist</a>
+  <a href="#scope">8 · Out of scope</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Heterogeneous Computing · <b>Übungsblatt 2</b> · implementation spec</div>
+    <h1>What the sheet demands, in one readable page</h1>
+    <p class="lede">Two CUDA micro-benchmarks (compute-bound divergence, memory-bound bandwidth), a CPU baseline,
+      a measurement pipeline that runs on Colab, and a report where every number is traceable to a committed CSV.</p>
+    <div class="meta">
+      <span>PR target: 2026S-HC</span>
+      <span>deadline 2026-07-12</span>
+      <span>~10 min presentation</span>
+      <span class="hot">no personal info anywhere</span>
+      <span class="hot">everything in English</span>
+    </div>
+    <p style="color:var(--faint); font-size:14px">Readable companion to <span class="mono">HC02_SPEC.md</span> (the
+      normative text). Checklist entries in §7 carry the measured outcomes of the 2026-07-19 T4 run, clearly marked.
+      See also: <a href="CODE_EXPLAINED.html">the code, explained</a> · <a href="presentation/HC02_slides.html">slide deck</a>.</p>
+  </header>
+
+  <section id="constraints">
+    <h2><span class="no">0</span>Context and hard constraints</h2>
+    <hr class="sect">
+    <dl class="kv">
+      <dt>Deliverable</dt><dd>a subfolder <code>blatt02/</code> in the course repo, submitted as a GitHub pull request; code <em>and</em> a short results report</dd>
+      <dt>Dev machine</dt><dd>no NVIDIA GPU (AMD iGPU, Windows 11) &mdash; code targets CUDA anyway, executes on <b>Google Colab (T4)</b></dd>
+      <dt>Compatibility</dt><dd>compiles with CUDA 12.x, runs on any GPU of compute capability ≥ 7.0</dd>
+      <dt>Dependencies</dt><dd>CUDA toolkit, C++17, OpenMP (CPU baseline), Python 3 + matplotlib + pandas (plots only)</dd>
+    </dl>
+    <div class="card warn">
+      <span class="tag">Non-negotiables</span>
+      <ul>
+        <li><b>No personal information</b> in any file content: no name, matriculation number, email, or username. (The GitHub account on the PR is unavoidable; file contents stay clean.)</li>
+        <li><b>English</b> for everything.</li>
+        <li><b>Nothing hardcoded:</b> no SM counts, clocks, or sizes baked in &mdash; query everything at runtime.</li>
+        <li><b>Minimal code:</b> no frameworks, no header-only libraries, no speculative abstraction.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="layout-s">
+    <h2><span class="no">1</span>Repository layout</h2>
+    <hr class="sect">
+    <pre><code>blatt02/
+  README.md              what this is, how to build, how to run
+  REPORT.md              results report, embeds plots from results/plots/
+  CMakeLists.txt         builds all three binaries (raw nvcc lines in README as fallback)
+  src/
+    common.cuh           timing (cuda events), CUDA_CHECK, device info dump
+    task1_divergence.cu  Task 1 benchmark binary
+    task2_bandwidth.cu   Task 2 benchmark binary
+    cpu_baseline.cpp     CPU reference for Task 1
+  scripts/
+    run_all.sh           runs every sweep, writes CSVs into results/
+    plot.py              reads results/*.csv, writes results/plots/*.png
+  colab/
+    run_colab.ipynb      clone &rarr; build &rarr; run &rarr; download notebook
+  results/               committed CSVs and plots from the real measurement run
+    plots/</code></pre>
+    <div class="card">
+      <span class="tag">The one architectural idea</span>
+      <p><b>CSV is the interface</b> between C++ and Python. Every binary prints CSV to stdout (header included);
+      <code>run_all.sh</code> redirects it into <code>results/</code>. Every CSV starts with a provenance comment,
+      <code># gpu=Tesla T4, cc=7.5, driver=13.0, toolkit=12.8</code>, so the hardware behind any number is on record.</p>
+    </div>
+  </section>
+
+  <section id="common">
+    <h2><span class="no">2</span>Shared infrastructure (<span class="mono">common.cuh</span>)</h2>
+    <hr class="sect">
+    <ul>
+      <li><code>CUDA_CHECK(call)</code>: abort with file/line on any CUDA error.</li>
+      <li><b>Timing:</b> <code>cudaEvent_t</code> pair around the kernel only (no H2D/D2H in the timed region).
+          Universal convention: <b>3 warmup launches, 10 timed launches, report the median.</b></li>
+      <li><code>print_device_info()</code>: name, compute capability, SM count, max threads/SM, warp size, global
+          memory, L2, memory clock and bus width. Attributes may be missing on newer toolkits &rarr; print
+          <code>n/a</code>, never crash. Theoretical peak bandwidth = <code>2 × memClockHz × busWidthBytes</code>
+          when available. This replaces <code>deviceQuery</code>.</li>
+      <li>All binaries take CLI flags (hand-rolled parsing, no library) and document them via <code>--help</code>.</li>
+    </ul>
+  </section>
+
+  <section id="task1">
+    <h2><span class="no">3</span>Task 1 · SIMT and warp divergence <span style="color:var(--faint); font-weight:500">(compute-bound)</span></h2>
+    <hr class="sect">
+    <p><b>Kernel design:</b> one thread per element, minimal memory traffic: read one <code>float</code>, run
+      <code>k</code> iterations of pure arithmetic, write one <code>float</code>. The inner load is an iterated FMA
+      chain (<code>x = fmaf(x, a, b)</code>, 2 FLOP per FMA) with per-iteration constant variation so the compiler
+      cannot collapse the loop. Result written to global memory so nothing is dead-code-eliminated.
+      <code>float</code>, fast math <b>off</b>, <code>-O3</code>.</p>
+
+    <h3 id="expA">3.2 Experiment A: throughput scaling over n</h3>
+    <ul>
+      <li>Sweep <code>n ∈ {2^10, 2^12, …, 2^26}</code>, fixed <code>k = 1024</code>, block 256.</li>
+      <li>Metric: GFLOP/s = <code>2·n·k / t_median</code>.</li>
+      <li>CPU baseline: identical loop, (a) single thread, (b) OpenMP all cores.</li>
+      <li>The report must read off: at which n the GPU saturates, how many threads that is and per SM,
+          versus the CPU which needs no such scale.</li>
+      <li>CSV: <code>task1_scaling.csv</code> · <span class="num">device,n,k,block,time_ms,gflops</span></li>
+    </ul>
+
+    <h3 id="expB">3.3 Experiment B: controlled warp divergence</h3>
+    <ul>
+      <li>Divergence degree <code>d ∈ {1, 2, 4, 8, 16, 32}</code>: branch on <code>threadIdx.x % d</code>, so one
+          warp executes d distinct paths. Fixed <code>n = 2^24</code>, <code>k = 1024</code>, block 256.</li>
+      <li><b>Critical design rule:</b> every path performs the same work k, so any slowdown is pure serialization,
+          not workload imbalance. Ideal expectation: slowdown ≈ d.</li>
+      <li>CPU comparison: same <code>%d</code> branching in the OpenMP baseline; expectation near-flat over d.
+          <em>Measure it, do not just claim it.</em></li>
+      <li>Secondary variant <code>looplen</code>: data-dependent trip count normalized to equal total work,
+          showing divergence via loop length. Extra CSV column <code>mode ∈ {branch, looplen}</code>.</li>
+      <li>CSV: <code>task1_divergence.csv</code> · <span class="num">device,mode,d,n,k,time_ms,gflops,slowdown_vs_d1</span></li>
+    </ul>
+    <div class="card warn">
+      <span class="tag">Pitfall the spec insists on</span>
+      <p>If the d branch bodies are structurally identical and differ only in constants, <code>nvcc</code> merges
+      them into one path with a constant lookup and the divergence disappears. Make each path <em>operationally
+      distinct</em> (different arithmetic mixes, generated by template/macro so 32 cases stay maintainable).
+      <b>Verify</b> the effect is real: measured d=32 slowdown must be roughly an order of magnitude or more vs d=1;
+      otherwise inspect with <code>--ptxas-options=-v</code> and fix before proceeding.</p>
+    </div>
+    <p><b>Plots:</b> <code>task1_scaling.png</code> (GFLOP/s vs n, log-x, three lines, saturation marked) and
+      <code>task1_divergence.png</code> (relative throughput vs d, GPU + CPU + ideal 1/d reference).</p>
+  </section>
+
+  <section id="task2">
+    <h2><span class="no">4</span>Task 2 · Memory access, latency hiding, bandwidth <span style="color:var(--faint); font-weight:500">(memory-bound)</span></h2>
+    <hr class="sect">
+    <p><b>Kernel design:</b> streaming kernel with minimal arithmetic intensity, <code>b[j] = a[j] · c</code>,
+      <code>n = 2^26</code> (256 MiB per array; check free memory, halve if needed), under three addressing patterns:</p>
+    <div class="grid2">
+      <div class="card"><span class="tag">1 · coalesced</span><p><code>j = i</code> (stride 1). Its measured result
+        is the <b>practical peak</b> all percentages refer to.</p></div>
+      <div class="card"><span class="tag">2 · strided</span><p><code>j = (i mod chunk)·stride + i/chunk</code>,
+        stride ∈ {2 … 128}: a clean permutation, every element touched exactly once.</p></div>
+      <div class="card"><span class="tag">3 · random gather</span><p><code>b[i] = a[idx[i]]·c</code> with a fixed-seed
+        (42) uniform random permutation, built on the host, copied outside the timed region.</p></div>
+      <div class="card"><span class="tag">byte convention</span><p>8 B/element (4 read + 4 write). The gather&rsquo;s
+        4 B/element index traffic is on top &mdash; footnote it in the report.</p></div>
+    </div>
+    <p><b>Correctness check:</b> sum over b equals sum over a · c within tolerance, once per run.</p>
+
+    <h3 id="expC">4.2 Experiment C: pattern comparison</h3>
+    <p>Sweep the three patterns (strided over its stride set), block 256, full grid. Reference: theoretical peak
+      (from §2) <em>and</em> measured practical peak; express everything as % of practical peak.<br>
+      CSV: <code>task2_patterns.csv</code> · <span class="num">pattern,stride,n,time_ms,gbps,pct_of_peak</span></p>
+
+    <h3 id="expD">4.3 Experiment D: latency hiding via occupancy</h3>
+    <ul>
+      <li>Coalesced kernel with a <b>grid-stride loop</b> so total work is identical across configurations.</li>
+      <li>Two knobs for resident warps: <b>block-size sweep</b> {32 … 1024}, and an <b>occupancy throttle</b>
+          (fixed block 256, unused dynamic shared memory per block caps resident blocks/SM, target ~12.5% → 100%).</li>
+      <li>Theoretical occupancy from <code>cudaOccupancyMaxActiveBlocksPerMultiprocessor</code> in the CSV.
+          Measured occupancy via Nsight Compute is usually blocked on Colab (counter permissions); note it and
+          rely on the API value.</li>
+      <li>CSV: <code>task2_occupancy.csv</code> · <span class="num">knob,block,smem_bytes,active_warps_per_sm,occupancy,time_ms,gbps</span></li>
+    </ul>
+    <p><b>Plots:</b> <code>task2_patterns.png</code> (strided as line over stride, coalesced/random/peak as reference
+      lines) and <code>task2_occupancy.png</code> (bandwidth vs occupancy, both knobs; expected shape: rising, then
+      flat once enough warps hide the latency).</p>
+  </section>
+
+  <section id="colab">
+    <h2><span class="no">5</span>Colab runner (<span class="mono">run_colab.ipynb</span>)</h2>
+    <hr class="sect">
+    <p>Cells in order: assert GPU present (<code>nvidia-smi</code>) → clone repo (URL/branch parameterized) →
+      CMake build (raw-nvcc fallback cell) → <code>run_all.sh</code> → <code>plot.py</code> → zip
+      <code>results/</code> and download. <code>run_all.sh</code> must be idempotent and finish well under
+      10 minutes on a T4.</p>
+  </section>
+
+  <section id="report">
+    <h2><span class="no">6</span>Report and presentation</h2>
+    <hr class="sect">
+    <p><b>REPORT.md</b> (2–4 pages equivalent): setup &amp; methodology · Task 1 results with the required
+      explanation (why a warp serializes divergent paths: single PC per warp pre-Volta, active-mask execution,
+      Volta+ ITS still serializes divergent streams; why the same branch is nearly free on a CPU: independent
+      control flow, branch prediction, speculation) · Task 2 results with the latency-hiding story (GPU: warp
+      oversubscription; CPU: caches + prefetching) and the data-layout consequences (SoA, coalesced 32/128-B
+      transactions, avoid gather, align/pad) · Limitations.</p>
+    <p><b>All numeric claims must come from the committed CSVs.</b> Plots embedded with relative paths.</p>
+    <p><b>SLIDES.md</b>: outline only, ~8 slides, 10 minutes: motivation, SIMT model, exp A, exp B, why
+      serialization, memory patterns, occupancy, takeaways.</p>
+  </section>
+
+  <section id="checklist">
+    <h2><span class="no">7</span>Acceptance checklist</h2>
+    <hr class="sect">
+    <p style="color:var(--faint); font-size:14.5px">Status column: outcome of the Colab T4 measurement run of
+      2026-07-19 (CUDA 12.8, driver 13.0), commit <span class="mono">1a96603</span>. Not part of the original spec.</p>
+    <table>
+      <tr><th>Requirement</th><th>Status</th></tr>
+      <tr><td><code>cmake --build</code> succeeds with CUDA 12.x, no host-code warnings</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">clean build.log (after the 12.8 header fix in common.cuh)</span></td></tr>
+      <tr><td>All three binaries run with <code>--help</code> and with defaults</td>
+          <td class="ok">✓</td></tr>
+      <tr><td>Divergence verified: d=32 slowdown ≥ ~8× vs d=1 on GPU</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">21.3×</span></td></tr>
+      <tr><td>CPU divergence measured, near-flat over d</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">≤ 1.03× (one 1.75× noise outlier)</span></td></tr>
+      <tr><td>Coalesced bandwidth ≥ ~70% of theoretical peak on T4; gather dramatically lower</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">247 GB/s = 77% · gather 14 GB/s</span></td></tr>
+      <tr><td>Occupancy sweep shows rise-then-plateau</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">158 → 187 GB/s, flat from 50%</span></td></tr>
+      <tr><td>Strided/gather kernels validated numerically once per run</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">rel_err 0.0, results/run.log</span></td></tr>
+      <tr><td><code>results/</code> contains real CSVs + PNGs; REPORT.md cites only those numbers</td>
+          <td class="ok">✓</td></tr>
+      <tr><td>Repo grep for personal data is clean</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">inside blatt02/ (the wrapper folder name must stay out of the PR)</span></td></tr>
+      <tr><td>Everything lives under <code>blatt02/</code>; nothing outside it touched in the PR</td>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">copy only blatt02/ into the fork</span></td></tr>
+    </table>
+  </section>
+
+  <section id="scope">
+    <h2><span class="no">8</span>Out of scope</h2>
+    <hr class="sect">
+    <ul>
+      <li>No shared-memory tiling, streams, multi-GPU, half precision, CUB/Thrust.</li>
+      <li>No CI, no unit-test framework (the checksum validation suffices).</li>
+      <li>The PR itself (fork, branch, submit) is done manually by the author; the README makes the folder PR-ready.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>HC02 · Heterogeneous Computing · 2026S</span>
+    <span class="mono"><a href="CODE_EXPLAINED.html">code explained</a> · <a href="presentation/HC02_slides.html">slides</a></span>
+  </footer>
+</main>
+</div>
+
+<script>
+  const links = [...document.querySelectorAll('#toc a')];
+  const targets = links.map(a => document.querySelector(a.hash));
+  const spy = () => {
+    let i = targets.findLastIndex(t => t && t.getBoundingClientRect().top < 120);
+    links.forEach((a, j) => a.classList.toggle('active', j === Math.max(i, 0)));
+  };
+  document.addEventListener('scroll', spy, { passive: true });
+  spy();
+</script>
+</body>
+</html>
