@@ -54,7 +54,11 @@ for dev, label, style in [("gpu", "GPU", "o-"),
 
 gpu = df[df.device == "gpu"].sort_values("n")
 gpu_peak = gpu.gflops.max()
-sat_n = int(gpu[gpu.gflops >= 0.95 * gpu_peak].n.min())
+# Saturation: first n within 5% of the plateau. The plateau is the median of
+# the last four points, robust against a single clock-boost outlier at the
+# largest n (observed on Colab: no control over the T4 boost clocks).
+plateau = gpu.gflops.tail(4).median()
+sat_n = int(gpu[gpu.gflops >= 0.95 * plateau].n.min())
 ax.axvline(sat_n, color="gray", ls=":", lw=1)
 ax.annotate(f"saturation\nn = 2^{sat_n.bit_length() - 1}", (sat_n, gpu_peak),
             textcoords="offset points", xytext=(8, -30), fontsize=9)
@@ -134,7 +138,8 @@ save(fig, "task2_occupancy.png")
 
 # --- Summary numbers for REPORT.md ------------------------------------------
 print("\n--- summary for REPORT.md ---")
-print(f"GPU peak: {gpu_peak:.0f} GFLOP/s, saturation at n = {sat_n} (2^{sat_n.bit_length() - 1})")
+print(f"GPU plateau: {plateau:.0f} GFLOP/s (max {gpu_peak:.0f}), "
+      f"saturation at n = {sat_n} (2^{sat_n.bit_length() - 1})")
 sc = load("task1_scaling.csv")
 for dev in ("cpu1", "cpuN"):
     sub = sc[sc.device == dev]

@@ -199,6 +199,10 @@
 
   figure { margin: 0; display: flex; flex-direction: column; min-height: 0; }
   figure svg { width: 100%; height: auto; display: block; }
+  figure img {
+    width: 100%; height: auto; display: block;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff;
+  }
   figcaption { font-size: 12.5px; color: var(--faint); margin-top: 10px; line-height: 1.45; }
 
   .legend { display: flex; gap: 18px; font-size: 13.5px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
@@ -267,7 +271,7 @@
         <p class="sub">SIMT, warp divergence and memory bandwidth: what control flow
           and data layout really cost on a GPU, measured against a CPU.</p>
         <div class="title-meta">
-          <span>CUDA 12 · NVIDIA T4 (Colab)</span>
+          <span>CUDA 12.8 · NVIDIA T4 (Colab)</span>
           <span>cudaEvent timing · median of 10</span>
           <span>CPU baseline: OpenMP</span>
         </div>
@@ -401,38 +405,21 @@
       <div class="body">
         <div class="cols c2w">
           <figure>
-            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: GFLOP/s versus problem size, GPU rises then saturates, CPU flat">
-              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
-              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
-              <text x="6" y="24" class="svgtxt">GFLOP/s</text>
-              <text x="6" y="38" class="svgtxt">(log)</text>
-              <text x="480" y="284" class="svgtxt">n (log)</text>
-              <text x="56" y="284" class="svgtxt">2^10</text>
-              <text x="270" y="284" class="svgtxt">2^18</text>
-              <line x1="330" y1="26" x2="330" y2="256" class="st-grid" stroke-width="1" stroke-dasharray="3 4"/>
-              <text x="338" y="40" class="svgtxt">saturation n = 2^__</text>
-              <path d="M 60 236 C 160 232, 220 200, 280 120 C 310 78, 330 52, 380 44 L 535 40"
-                    fill="none" class="st-gpu" stroke-width="3.5" stroke-linecap="round"/>
-              <line x1="60" y1="196" x2="535" y2="196" class="st-cpu" stroke-width="3" stroke-linecap="round"/>
-              <line x1="60" y1="222" x2="535" y2="222" class="st-cpu" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
-              <text x="440" y="60" class="svgtxt" style="fill:var(--gpu)">GPU</text>
-              <text x="440" y="190" class="svgtxt" style="fill:var(--cpu)">CPU · all cores</text>
-              <text x="440" y="240" class="svgtxt" style="fill:var(--cpu)">CPU · 1 thread</text>
-            </svg>
-            <figcaption>Schematic shape. The measured figure is
-              <span class="mono">results/plots/task1_scaling.png</span> from the committed CSVs.</figcaption>
+            <img src="../blatt02/results/plots/task1_scaling.png"
+                 alt="Measured GFLOP/s versus problem size: GPU rises from 171 to a ~4,400 GFLOP/s plateau at n = 2^20, CPU lines flat near 1.5 and 2.9 GFLOP/s">
+            <figcaption>Measured on the T4 (median of 10). The 6,853 GFLOP/s outlier at
+              n = 2^26 is the boost clock ramping up, no clock control on Colab.</figcaption>
           </figure>
           <div style="align-self:center; display:flex; flex-direction:column; gap:16px">
             <div class="kpis" style="flex-direction:column">
-              <div class="kpi"><div class="v"><span class="tbd">n = 2^__</span></div>
-                <div class="l">saturation point ≙ <span class="tbd">__</span> threads/SM</div></div>
-              <div class="kpi"><div class="v"><span class="tbd">____</span> GFLOP/s</div>
-                <div class="l">GPU peak, vs <span class="tbd">__</span> GFLOP/s CPU (all cores)</div></div>
+              <div class="kpi"><div class="v">n = 2^20</div>
+                <div class="l">saturation point ≙ ~26k scheduled threads/SM (~26 waves)</div></div>
+              <div class="kpi"><div class="v">4,365 GFLOP/s</div>
+                <div class="l">GPU plateau, vs 2.9 GFLOP/s CPU (2 cores): ~1,500×</div></div>
             </div>
             <p class="sub" style="font-size:16px">Below saturation there are too few resident
               warps to hide instruction latency and too few blocks to fill the SMs.
               The CPU has no such threshold: its lines are flat from the first kilobyte.</p>
-            <span class="chip">values pending · Colab measurement run</span>
           </div>
         </div>
       </div>
@@ -445,43 +432,27 @@
         <div class="eyebrow">Task 1 · <b>Experiment B</b> · controlled divergence</div>
         <div class="lanes" aria-hidden="true"></div>
       </div>
-      <h2>d paths per warp cost a factor of d</h2>
+      <h2>d paths per warp cost almost a factor of d</h2>
       <div class="body">
         <div class="cols c2w">
           <figure>
-            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: relative throughput versus divergence degree, GPU follows 1/d, CPU flat">
-              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
-              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
-              <text x="6" y="24" class="svgtxt">rel. throughput</text>
-              <text x="6" y="38" class="svgtxt">(log)</text>
-              <text x="370" y="284" class="svgtxt">d (log)</text>
-              <text x="60" y="284" class="svgtxt">1</text><text x="250" y="284" class="svgtxt">8</text><text x="500" y="284" class="svgtxt">32</text>
-              <line x1="64" y1="40" x2="530" y2="230" class="st-ideal" stroke-width="2" stroke-dasharray="3 5"/>
-              <path d="M 64 44 L 530 238" fill="none" class="st-gpu" stroke-width="3.5" stroke-linecap="round"/>
-              <path d="M 64 40 C 200 46, 400 48, 530 48" fill="none" class="st-cpu" stroke-width="3" stroke-linecap="round"/>
-              <path d="M 64 42 C 160 58, 260 88, 530 96" fill="none" class="st-gpu" stroke-width="2.5" stroke-dasharray="7 6" stroke-linecap="round"/>
-            </svg>
-            <div class="legend">
-              <span><i style="background:var(--gpu)"></i>GPU · branch</span>
-              <span><i style="background:repeating-linear-gradient(90deg, var(--gpu) 0 6px, transparent 6px 10px)"></i>GPU · loop length</span>
-              <span><i style="background:var(--cpu)"></i>CPU</span>
-              <span><i style="background:repeating-linear-gradient(90deg, var(--faint) 0 3px, transparent 3px 7px)"></i>ideal 1/d</span>
-            </div>
-            <figcaption>Schematic shape; measured figure:
-              <span class="mono">results/plots/task1_divergence.png</span>.
-              Loop-length variant saturates near 2×: warp time = slowest lane, total work constant.</figcaption>
+            <img src="../blatt02/results/plots/task1_divergence.png"
+                 alt="Measured relative throughput versus divergence degree: GPU branch line tracks the ideal 1/d slope at about two thirds of its cost, GPU loop-length variant saturates near one half, CPU lines stay flat">
+            <figcaption>Measured figure. Loop-length variant saturates at 1.92×:
+              warp time = slowest lane, total work constant.</figcaption>
           </figure>
           <div style="align-self:center">
             <table class="res">
               <tr><th>d</th><th>GPU slowdown</th><th>ideal</th><th>CPU</th></tr>
-              <tr><td>2</td><td><span class="tbd">__</span></td><td>2</td><td><span class="tbd">__</span></td></tr>
-              <tr><td>8</td><td><span class="tbd">__</span></td><td>8</td><td><span class="tbd">__</span></td></tr>
-              <tr><td>32</td><td><span class="tbd">__</span></td><td>32</td><td><span class="tbd">~1</span></td></tr>
+              <tr><td>2</td><td>1.46</td><td>2</td><td>1.00</td></tr>
+              <tr><td>8</td><td>5.37</td><td>8</td><td>1.03</td></tr>
+              <tr><td>32</td><td>21.3</td><td>32</td><td>1.02</td></tr>
             </table>
             <p class="sub" style="font-size:15.5px; margin-top:16px">Design rule: every path does
               <em>identical work</em> (k FMAs), just operationally distinct code, so the compiler
-              cannot merge branches and any slowdown is pure serialization.</p>
-            <span class="chip" style="margin-top:10px">values pending · Colab measurement run</span>
+              cannot merge branches and any slowdown is pure serialization.
+              Measured ≈ 2/3 of ideal: the d = 1 chain is latency-bound, and Volta+
+              interleaves the divergent streams (next slide).</p>
           </div>
         </div>
       </div>
@@ -505,8 +476,9 @@
                   one after another under the active mask.</li>
               <li>With d paths, each pass keeps only 32/d lanes busy: d× the time for
                   the same work.</li>
-              <li>Volta+ independent thread scheduling changes bookkeeping, not the
-                  economics: divergent streams still issue serially.</li>
+              <li>Volta+ independent thread scheduling still issues divergent streams
+                  serially, but may interleave them; that is the measured 21.3× instead
+                  of 32×. The economics survive, softened by a third.</li>
             </ul>
           </div>
           <div class="card cpu">
@@ -539,36 +511,23 @@
       <div class="body">
         <div class="cols c2w">
           <figure>
-            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: bandwidth by access pattern; coalesced high, strided decaying, random lowest">
-              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
-              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
-              <text x="6" y="24" class="svgtxt">GB/s</text>
-              <text x="470" y="284" class="svgtxt">stride (log)</text>
-              <line x1="60" y1="34" x2="535" y2="34" class="st-ideal" stroke-width="2" stroke-dasharray="3 5"/>
-              <text x="60" y="28" class="svgtxt">theoretical peak (2 · clock · bus)</text>
-              <line x1="60" y1="58" x2="535" y2="58" class="st-gpu" stroke-width="3" stroke-linecap="round"/>
-              <text x="380" y="52" class="svgtxt" style="fill:var(--gpu)">coalesced = practical peak</text>
-              <path d="M 60 62 C 140 90, 200 160, 280 205 C 360 240, 450 244, 535 244"
-                    fill="none" class="st-gpu" stroke-width="3.5" stroke-dasharray="8 6" stroke-linecap="round"/>
-              <text x="192" y="116" class="svgtxt" style="fill:var(--gpu)">strided</text>
-              <line x1="60" y1="238" x2="535" y2="238" stroke-width="3" class="st-gpu2" stroke-dasharray="2 5" stroke-linecap="round"/>
-              <text x="70" y="230" class="svgtxt">random gather</text>
-            </svg>
-            <figcaption>Schematic; measured figure:
-              <span class="mono">results/plots/task2_patterns.png</span>. Convention: 8 B per element
-              (4 read + 4 write); the gather's 4 B/element index traffic comes on top.</figcaption>
+            <img src="../blatt02/results/plots/task2_patterns.png"
+                 alt="Measured bandwidth by access pattern: coalesced 247 GB/s just under the 320 GB/s theoretical peak line, strided decaying from 87 to 6 GB/s over strides 2 to 128, random gather at 14 GB/s">
+            <figcaption>Measured figure. Convention: 8 B per element
+              (4 read + 4 write); the gather's 4 B/element index traffic comes on top
+              (counting it: 21.6 GB/s).</figcaption>
           </figure>
           <div style="align-self:center; display:flex; flex-direction:column; gap:16px">
             <div class="kpis" style="flex-direction:column">
-              <div class="kpi"><div class="v"><span class="tbd">___</span> GB/s · <span class="tbd">__%</span></div>
-                <div class="l">coalesced, as share of theoretical peak</div></div>
-              <div class="kpi"><div class="v"><span class="tbd">___</span> GB/s</div>
-                <div class="l">random gather · <span class="tbd">__%</span> of practical peak</div></div>
+              <div class="kpi"><div class="v">247 GB/s · 77%</div>
+                <div class="l">coalesced, as share of theoretical peak (320 GB/s)</div></div>
+              <div class="kpi"><div class="v">14 GB/s</div>
+                <div class="l">random gather · 5.8% of practical peak</div></div>
             </div>
             <p class="sub" style="font-size:16px">A warp reading 32 consecutive floats is
               <em>one</em> 128-byte transaction. Strided or random lanes shatter it into up
-              to 32 transactions whose cache lines are mostly thrown away.</p>
-            <span class="chip">values pending · Colab measurement run</span>
+              to 32 transactions whose cache lines are mostly thrown away. From stride 16
+              on, strided is no better than random.</p>
           </div>
         </div>
       </div>
@@ -585,23 +544,9 @@
       <div class="body">
         <div class="cols c2w">
           <figure>
-            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: bandwidth versus occupancy rises then plateaus">
-              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
-              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
-              <text x="6" y="24" class="svgtxt">GB/s</text>
-              <text x="360" y="284" class="svgtxt">occupancy (%)</text>
-              <text x="60" y="284" class="svgtxt">12.5</text><text x="290" y="284" class="svgtxt">50</text><text x="510" y="284" class="svgtxt">100</text>
-              <path d="M 64 220 C 150 160, 220 92, 300 62 C 360 44, 450 40, 535 40"
-                    fill="none" class="st-gpu" stroke-width="3.5" stroke-linecap="round"/>
-              <path d="M 120 226 C 200 170, 260 100, 330 66 C 390 48, 460 44, 535 44"
-                    fill="none" class="st-gpu" stroke-width="2.5" stroke-dasharray="7 6" stroke-linecap="round"/>
-              <text x="90" y="120" class="svgtxt" style="fill:var(--gpu)">block-size sweep</text>
-              <text x="330" y="100" class="svgtxt" style="fill:var(--gpu)">smem throttle (block 256)</text>
-              <line x1="330" y1="30" x2="330" y2="256" class="st-grid" stroke-width="1" stroke-dasharray="3 4"/>
-              <text x="338" y="246" class="svgtxt">plateau from ~__%</text>
-            </svg>
-            <figcaption>Schematic; measured figure:
-              <span class="mono">results/plots/task2_occupancy.png</span>. Occupancy is throttled by
+            <img src="../blatt02/results/plots/task2_occupancy.png"
+                 alt="Measured bandwidth versus theoretical occupancy: shared-memory throttle rises from 158 GB/s at 25 percent to about 187 GB/s at 50 percent, then flat to 100 percent; block-size sweep flat between 181 and 185 GB/s">
+            <figcaption>Measured figure. Occupancy is throttled by
               reserving <em>unused</em> dynamic shared memory per block; a grid-stride loop keeps
               total work identical.</figcaption>
           </figure>
@@ -609,6 +554,9 @@
             <li>Latency hiding is oversubscription: on a memory stall the scheduler
                 switches to the next ready warp, so more resident warps mean fewer
                 idle cycles.</li>
+            <li>Measured: 158 GB/s at 25% occupancy, ~187 GB/s from 50% on, flat to
+                100%. Even 8 warps/SM already deliver 85% of the plateau for this
+                pure streaming kernel.</li>
             <li>Beyond the knee the DRAM interface is saturated; extra occupancy
                 buys nothing.</li>
             <li class="dim">Occupancy values are the runtime API's theoretical ones:

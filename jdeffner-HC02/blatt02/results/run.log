@@ -1,0 +1,51 @@
+== Task 1, experiment A: throughput scaling ==
+device            : Tesla T4 (cc 7.5)
+SMs               : 40
+max threads/SM    : 1024
+warp size         : 32
+global memory     : 14.6 GiB
+L2 cache          : 4096 KiB
+memory clock      : 5001 MHz
+memory bus width  : 256 bit
+theoretical peak  : 320.1 GB/s
+== Task 1, experiment B: warp divergence ==
+device            : Tesla T4 (cc 7.5)
+SMs               : 40
+max threads/SM    : 1024
+warp size         : 32
+global memory     : 14.6 GiB
+L2 cache          : 4096 KiB
+memory clock      : 5001 MHz
+memory bus width  : 256 bit
+theoretical peak  : 320.1 GB/s
+== Task 2, experiment C: access patterns ==
+device            : Tesla T4 (cc 7.5)
+SMs               : 40
+max threads/SM    : 1024
+warp size         : 32
+global memory     : 14.6 GiB
+L2 cache          : 4096 KiB
+memory clock      : 5001 MHz
+memory bus width  : 256 bit
+theoretical peak  : 320.1 GB/s
+validated coalesced  rel_err=0.00e+00
+validated strided    rel_err=0.00e+00
+validated strided    rel_err=0.00e+00
+validated strided    rel_err=0.00e+00
+validated strided    rel_err=0.00e+00
+validated strided    rel_err=0.00e+00
+validated strided    rel_err=0.00e+00
+validated strided    rel_err=0.00e+00
+validated random     rel_err=0.00e+00
+== Task 2, experiment D: occupancy ==
+device            : Tesla T4 (cc 7.5)
+SMs               : 40
+max threads/SM    : 1024
+warp size         : 32
+global memory     : 14.6 GiB
+L2 cache          : 4096 KiB
+memory clock      : 5001 MHz
+memory bus width  : 256 bit
+theoretical peak  : 320.1 GB/s
+validated gridstride rel_err=0.00e+00
+done, CSVs in results/
