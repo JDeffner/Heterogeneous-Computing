@@ -25,7 +25,8 @@ use tokio::sync::{broadcast, Mutex};
 use shared::util::now_iso;
 use shared::{
     topics, Alarm, AlarmControl, CommissionRequest, DeviceControl, DeviceRecord, HubControl,
-    HubStatus, PairingAd, Room, RoomControl, SensorMode, SensorState, SituationEvent, Telemetry,
+    HubStatus, PairingAd, Resident, Room, RoomControl, SensorMode, SensorState, SituationEvent,
+    Telemetry,
 };
 
 #[derive(Clone, Serialize)]
@@ -53,6 +54,7 @@ struct AppState {
     pairing: HashMap<String, PairingAd>,
     events: Vec<SituationEvent>,
     hub_status: Option<HubStatus>,
+    resident: Option<Resident>,
 }
 
 struct App {
@@ -69,6 +71,7 @@ struct Snapshot<'a> {
     alarms: Vec<&'a Alarm>,
     pairing: Vec<&'a PairingAd>,
     hub_status: Option<&'a HubStatus>,
+    resident: Option<&'a Resident>,
     events: Vec<&'a SituationEvent>,
     ts: String,
 }
@@ -94,6 +97,7 @@ fn snapshot_json(s: &AppState) -> String {
         alarms,
         pairing,
         hub_status: s.hub_status.as_ref(),
+        resident: s.resident.as_ref(),
         events,
         ts: now_iso(),
     };
@@ -141,6 +145,7 @@ async fn main() {
         topics::sub::all_alarms(),
         topics::sub::all_rooms(),
         topics::hub_status(),
+        topics::resident(),
     ] {
         if let Err(e) = client.subscribe(s.clone(), QoS::AtLeastOnce).await {
             eprintln!("[web] subscribe {s} failed: {e}");
@@ -171,6 +176,9 @@ async fn main() {
         .route("/api/state", get(get_state))
         .route("/api/stream", get(stream))
         .route("/api/alarms/:id/resolve", post(resolve_alarm))
+        .route("/api/alarms/:id/ack", post(ack_alarm))
+        .route("/api/alarms/:id/call-logged", post(call_logged))
+        .route("/api/resident", post(update_resident))
         .route("/api/rooms", post(create_room))
         .route("/api/rooms/:room_id", delete(delete_room))
         .route("/api/devices/:id/assign", post(assign_device))
@@ -284,6 +292,10 @@ async fn handle_message(app: &Arc<App>, topic: &str, payload: &[u8]) {
             if let Ok(hs) = serde_json::from_slice::<HubStatus>(payload) {
                 s.hub_status = Some(hs);
             }
+        } else if topic == topics::resident().as_str() {
+            if let Ok(r) = serde_json::from_slice::<Resident>(payload) {
+                s.resident = Some(r);
+            }
         }
     }
     broadcast_snapshot(app).await;
@@ -330,6 +342,23 @@ async fn pub_json<T: Serialize>(app: &Arc<App>, topic: String, payload: &T) {
 async fn resolve_alarm(State(app): State<Arc<App>>, Path(id): Path<String>) -> Json<Value> {
     let ctrl = AlarmControl { alarm_id: id, action: "resolve".into() };
     pub_json(&app, topics::alarm_control(), &ctrl).await;
+    Json(json!({"ok": true}))
+}
+
+async fn ack_alarm(State(app): State<Arc<App>>, Path(id): Path<String>) -> Json<Value> {
+    let ctrl = AlarmControl { alarm_id: id, action: "ack".into() };
+    pub_json(&app, topics::alarm_control(), &ctrl).await;
+    Json(json!({"ok": true}))
+}
+
+async fn call_logged(State(app): State<Arc<App>>, Path(id): Path<String>) -> Json<Value> {
+    let ctrl = AlarmControl { alarm_id: id, action: "call_logged".into() };
+    pub_json(&app, topics::alarm_control(), &ctrl).await;
+    Json(json!({"ok": true}))
+}
+
+async fn update_resident(State(app): State<Arc<App>>, Json(r): Json<Resident>) -> Json<Value> {
+    pub_json(&app, topics::resident_control(), &r).await;
     Json(json!({"ok": true}))
 }
 

@@ -72,9 +72,19 @@ connects, restores rooms + registry from disk, subscribes, then runs a loop that
 - `rules.rs` - watches presence + telemetry, keeps small per-device/room state,
   and is edge-triggered: each rule method returns the situations it produced
   (raised once, cleared once). SOS latches: a press raises a critical alarm that
-  does not auto-clear.
+  does not auto-clear. It also keeps a rolling EVIDENCE LOG of human-readable
+  observations ("Stove in Kitchen turned on") and a last-activity marker; the
+  inference rules (`possible_fall`, `inactivity`, `door_open_at_night`) are
+  built on those rather than on any single sensor.
 - `alarms.rs` - turns situations into `Alarm` objects published retained to
-  `alarms/<id>`, deduplicated; resolves by clearing the retained message.
+  `alarms/<id>`, deduplicated; resolves by clearing the retained message. On
+  creation it attaches the response side: recommended action steps and, where
+  calling may be needed, a CALL SHEET (correct number/service + dispatcher
+  script) generated from the resident profile. Its `tick` escalates critical
+  alarms that stay unacknowledged past `ACK_TIMEOUT_SECONDS`, and
+  `handle_control` implements `resolve` / `ack` / `call_logged` from the UI.
+- The resident profile is owned by `main.rs` (persisted `data/resident.json`,
+  retained on `smarthome/resident`, replaced via `control/resident`).
 
 The rule engine returns events that `main` publishes and feeds to the alarm
 engine, so there are no shared callbacks or locks.
@@ -138,7 +148,20 @@ ESP-IDF C, one image configurable to a role via menuconfig. See
 ### D - Simulate night
 1. The dashboard publishes `{forceNight:true}` to `control/hub`.
 2. The hub sets the flag and republishes `hub/status` (retained); the
-   bed-at-night rule can now fire at any time.
+   bed-at-night and door-at-night rules can now fire at any time.
+
+### E - From alarm to emergency call
+1. Movement in the kitchen stops abruptly; every sensor goes quiet while the
+   bed is empty. After `FALL_SILENCE_SECONDS` the rule engine raises
+   `possible_fall`, attaching the recent evidence log.
+2. The alarm engine wraps it into an `Alarm` with recommended steps and an
+   ambulance CALL SHEET built from the resident profile (age, conditions,
+   medication, address, key-safe access, call-back contact).
+3. The console shows the alarm with "I am on it" (ack) and "Call 112 -
+   prepared". Nobody reacts within `ACK_TIMEOUT_SECONDS`, so the hub flags the
+   alarm `escalated` and pushes a "place the call now" event.
+4. The caregiver opens the call sheet, dials, reads the script, clicks
+   "Mark call as placed" (`call_logged`), and later resolves the alarm.
 
 ---
 

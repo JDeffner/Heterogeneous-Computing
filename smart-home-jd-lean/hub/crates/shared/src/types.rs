@@ -271,6 +271,34 @@ pub enum DeviceControl {
     },
 }
 
+// ----- Resident ------------------------------------------------------------
+
+/// One person in the resident's escalation chain (ordered by priority).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Contact {
+    pub name: String,
+    pub role: String,
+    pub phone: String,
+}
+
+/// Profile of the person living in the home. Owned by the hub (retained on
+/// `smarthome/resident`, persisted to disk); the emergency call sheets are
+/// generated from it, so it holds exactly what a 112 dispatcher asks for.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Resident {
+    pub name: String,
+    pub year_of_birth: i32,
+    pub conditions: Vec<String>,
+    pub medications: Vec<String>,
+    pub notes: String,
+    pub address: String,
+    pub access_info: String,
+    pub contacts: Vec<Contact>,
+    pub updated_at: String,
+}
+
 // ----- Situations / alarms -------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -279,8 +307,30 @@ pub enum RuleKey {
     StoveOnNoMotion,
     BedLeftAtNightNoReturn,
     DoorOpenNoMotion,
+    DoorOpenAtNight,
+    PossibleFall,
+    Inactivity,
     SosPressed,
     DeviceOffline,
+    AlarmEscalated,
+}
+
+/// One entry of the sensor-evidence timeline attached to situations/alarms.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceItem {
+    pub ts: String,
+    pub text: String,
+}
+
+/// A prepared emergency call: which service to dial and exactly what to say.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CallSheet {
+    pub number: String,
+    pub service: String,
+    pub reason: String,
+    pub script: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -313,6 +363,8 @@ pub struct SituationEvent {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cleared: Option<bool>,
     pub detected_at: String,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub evidence: Vec<EvidenceItem>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -335,8 +387,23 @@ pub struct Alarm {
     pub status: AlarmStatus,
     pub raised_at: String,
     pub updated_at: String,
+    /// What the caregiver should do, step by step, most urgent first.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub recommended_actions: Vec<String>,
+    /// Sensor observations that led to this alarm (oldest first).
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub evidence: Vec<EvidenceItem>,
+    /// Prepared emergency call, present on alarms where calling 112 may be needed.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub call_sheet: Option<CallSheet>,
+    /// Set by the hub when the alarm stayed unacknowledged past the ack timeout.
+    #[serde(default)]
+    pub escalated: bool,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub call_logged_at: Option<String>,
 }
 
+/// UI -> hub: `action` is one of "resolve", "ack", "call_logged".
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlarmControl {

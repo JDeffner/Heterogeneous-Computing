@@ -56,6 +56,7 @@ on-disk files (hub) and NVS (devices) let them re-sync on restart.
 | `smarthome/events/<id>` | situations detected by the hub | - |
 | `smarthome/alarms/<id>` | alarm/warning objects | retained |
 | `smarthome/rooms/<roomId>` | a registered room (the "QR" location id) | retained |
+| `smarthome/resident` | resident profile (feeds the emergency call sheets) | retained |
 | `smarthome/hub/status` · `smarthome/control/*` | hub status / control to hub | status retained |
 
 The JSON wire format is identical across Rust and C (camelCase fields, a `kind`
@@ -118,14 +119,40 @@ operation. This mirrors Zigbee/Z-Wave inclusion and Matter setup codes.
 | Rule | Severity |
 |---|---|
 | `sos_pressed` - panic button pressed | critical - latches until resolved |
+| `possible_fall` - activity stops abruptly, all sensors silent, bed empty | critical |
 | `stove_on_no_motion` - stove left on, no motion in room | critical |
 | `bed_left_at_night_no_return` - bed left at night, no return | critical |
+| `door_open_at_night` - door opens at night while the bed is empty | critical |
 | `door_open_no_motion` - door open, then no motion | warning |
+| `inactivity` - nothing happens anywhere for a long daytime stretch | warning |
 | `device_offline` - registered device unreachable (auto-resolves) | warning |
 
-Thresholds are short for demos and env-configurable (see `hub/README.md`). The
+Thresholds are short for demos and env-configurable (`STOVE_ON_SECONDS`,
+`FALL_SILENCE_SECONDS`, `INACTIVITY_SECONDS`, `ACK_TIMEOUT_SECONDS`, ...). The
 SOS alarm latches: releasing the button does not clear it; a caregiver must click
 **Resolve**.
+
+## From alarm to response
+
+Every alarm carries more than a message:
+
+- **Evidence** - the recent sensor observations that led to it ("Motion in
+  Kitchen ended", "Stove in Kitchen turned on"), shown under "Why?".
+- **Recommended actions** - concrete ordered steps (call the resident, send the
+  key holder, then escalate), personalised from the resident profile (e.g. the
+  dementia hint on the night-wandering alarm).
+- **Emergency call sheet** - the correct number and service for the situation
+  (112 ambulance for SOS/fall/night collapse, 112 fire brigade for the stove,
+  110 police for a missing person) plus a ready-to-read dispatcher script:
+  what happened, who the patient is (age, conditions, medication), the address
+  and room, how to get in (key safe), and a call-back contact.
+- **Escalation** - a critical alarm nobody acknowledges within
+  `ACK_TIMEOUT_SECONDS` is flagged and the console urges placing the call now.
+  "I am on it" acknowledges; "Mark call as placed" logs the emergency call.
+
+The resident profile behind the call sheets lives on the hub
+(`data/resident.json`, retained on `smarthome/resident`) and is editable in the
+dashboard. A fictional demo profile is seeded on first start.
 
 ## Tests
 

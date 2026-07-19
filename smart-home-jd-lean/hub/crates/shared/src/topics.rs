@@ -15,6 +15,8 @@
 //!   smarthome/rooms/<roomId>                 (retained, HUB)   -> Room
 //!   smarthome/hub/status                     (retained, HUB)   -> HubStatus
 //!   smarthome/control/hub                                      -> HubControl
+//!   smarthome/resident                       (retained, HUB)   -> Resident
+//!   smarthome/control/resident                                 -> Resident
 
 pub const ROOT: &str = "smarthome";
 
@@ -62,6 +64,12 @@ pub fn hub_status() -> String {
 }
 pub fn hub_control() -> String {
     format!("{ROOT}/control/hub")
+}
+pub fn resident() -> String {
+    format!("{ROOT}/resident")
+}
+pub fn resident_control() -> String {
+    format!("{ROOT}/control/resident")
 }
 
 /// Wildcard subscriptions for discovery and processing.

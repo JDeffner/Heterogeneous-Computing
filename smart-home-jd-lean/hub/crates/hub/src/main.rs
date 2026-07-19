@@ -19,8 +19,8 @@ use std::time::Duration;
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet};
 use shared::util::{new_id, now_iso};
 use shared::{
-    topics, CommissionRequest, CommissionedMessage, DeviceControl, HubControl, HubStatus, Location,
-    PairingAd, Room, RoomControl, SituationEvent, Status, Telemetry,
+    topics, CommissionRequest, CommissionedMessage, Contact, DeviceControl, HubControl, HubStatus,
+    Location, PairingAd, Resident, Room, RoomControl, SituationEvent, Status, Telemetry,
 };
 
 use alarms::AlarmEngine;
@@ -39,6 +39,7 @@ struct Hub {
     pairing_ads: HashMap<String, PairingAd>,
     data_dir: PathBuf,
     rooms_file: PathBuf,
+    resident_file: PathBuf,
 }
 
 impl Hub {
@@ -48,6 +49,15 @@ impl Hub {
             let cleared = if ev.cleared.unwrap_or(false) { " CLEARED" } else { "" };
             println!("EVENT [{}]{cleared} {}", ev.severity.as_str(), ev.message);
             self.alarms.handle_event(&ev).await;
+        }
+    }
+
+    /// Publish feed-only events (escalations, acks) WITHOUT feeding them back
+    /// into the alarm engine.
+    async fn emit_feed(&mut self, events: Vec<SituationEvent>) {
+        for ev in events {
+            publish_json(&self.client, &topics::event(&ev.event_id), &ev, false).await;
+            println!("EVENT [{}] {}", ev.severity.as_str(), ev.message);
         }
     }
 
@@ -85,7 +95,7 @@ impl Hub {
         if topic.ends_with("/telemetry") {
             match serde_json::from_slice::<Telemetry>(payload) {
                 Ok(t) => {
-                    let evs = self.rules.handle_telemetry(&self.registry, &t);
+                    let evs = self.rules.handle_telemetry(&self.registry, &self.config, &t);
                     self.emit(evs).await;
                 }
                 Err(e) => eprintln!("[hub] invalid telemetry on {topic}: {e}"),
@@ -104,11 +114,22 @@ impl Hub {
             }
         } else if topic == topics::alarm_control().as_str() {
             if let Ok(ctrl) = serde_json::from_slice(payload) {
-                self.alarms.handle_control(&ctrl).await;
+                if let Some(ev) = self.alarms.handle_control(&ctrl).await {
+                    self.emit_feed(vec![ev]).await;
+                }
             }
         } else if topic == topics::hub_control().as_str() {
             if let Ok(ctrl) = serde_json::from_slice::<HubControl>(payload) {
                 self.handle_hub_control(ctrl).await;
+            }
+        } else if topic == topics::resident_control().as_str() {
+            match serde_json::from_slice::<Resident>(payload) {
+                Ok(mut r) => {
+                    r.updated_at = now_iso();
+                    self.set_resident(r).await;
+                    println!("[hub] resident profile updated");
+                }
+                Err(e) => eprintln!("[hub] invalid resident profile: {e}"),
             }
         }
     }
@@ -116,6 +137,27 @@ impl Hub {
     async fn tick(&mut self) {
         let evs = self.rules.evaluate(&self.registry, &self.config);
         self.emit(evs).await;
+        let escalations = self.alarms.tick(&self.config).await;
+        self.emit_feed(escalations).await;
+    }
+
+    // ----- Resident profile ------------------------------------------------
+
+    /// Persist + publish (retained) + hand to the alarm engine for call sheets.
+    async fn set_resident(&mut self, r: Resident) {
+        if let Err(e) = std::fs::create_dir_all(&self.data_dir) {
+            eprintln!("[hub] could not create {:?}: {e}", self.data_dir);
+        }
+        match serde_json::to_string_pretty(&r) {
+            Ok(s) => {
+                if let Err(e) = std::fs::write(&self.resident_file, s) {
+                    eprintln!("[hub] could not write {:?}: {e}", self.resident_file);
+                }
+            }
+            Err(e) => eprintln!("[hub] serialize resident failed: {e}"),
+        }
+        publish_json(&self.client, &topics::resident(), &r, true).await;
+        self.alarms.set_resident(r);
     }
 
     // ----- Onboarding ------------------------------------------------------
@@ -273,6 +315,57 @@ fn slug(s: &str) -> String {
     }
 }
 
+fn read_resident(file: &PathBuf) -> Option<Resident> {
+    if !file.exists() {
+        return None;
+    }
+    match std::fs::read_to_string(file) {
+        Ok(s) => match serde_json::from_str::<Resident>(&s) {
+            Ok(r) => Some(r),
+            Err(e) => {
+                eprintln!("[hub] could not parse {file:?}: {e}");
+                None
+            }
+        },
+        Err(e) => {
+            eprintln!("[hub] could not read {file:?}: {e}");
+            None
+        }
+    }
+}
+
+/// Demo profile so the emergency call sheets are complete out of the box.
+/// Everything here is fictional; edit it from the dashboard.
+fn default_resident() -> Resident {
+    Resident {
+        name: "Margarete Weber".into(),
+        year_of_birth: 1943,
+        conditions: vec!["Dementia (early stage)".into(), "Atrial fibrillation".into()],
+        medications: vec!["Marcumar (anticoagulant)".into(), "Donepezil".into()],
+        notes: "Hard of hearing - speak loudly. Walks with a rollator.".into(),
+        address: "Musterstrasse 12, 54290 Trier - ground-floor apartment".into(),
+        access_info: "Key safe at the side entrance, code 4711#".into(),
+        contacts: vec![
+            Contact {
+                name: "Anna Weber".into(),
+                role: "daughter, has a key".into(),
+                phone: "+49 171 2345678".into(),
+            },
+            Contact {
+                name: "Pflegedienst Sonnenschein".into(),
+                role: "care service".into(),
+                phone: "+49 651 998877".into(),
+            },
+            Contact {
+                name: "Herbert Klein".into(),
+                role: "neighbor, has a key".into(),
+                phone: "+49 651 445566".into(),
+            },
+        ],
+        updated_at: now_iso(),
+    }
+}
+
 fn read_rooms(file: &PathBuf) -> Vec<Room> {
     if file.exists() {
         match std::fs::read_to_string(file) {
@@ -308,6 +401,7 @@ async fn main() {
         PathBuf::from(&config.data_dir)
     };
     let rooms_file = data_dir.join("rooms.json");
+    let resident_file = data_dir.join("resident.json");
 
     let (host, port) = parse_broker(&config.broker_url);
     let mut opts = MqttOptions::new("hub", host.as_str(), port);
@@ -324,13 +418,16 @@ async fn main() {
         pairing_ads: HashMap::new(),
         data_dir,
         rooms_file: rooms_file.clone(),
+        resident_file: resident_file.clone(),
     };
 
-    // Restore rooms (retained) and the device registry from disk.
+    // Restore rooms (retained), the resident profile and the device registry.
     for room in read_rooms(&rooms_file) {
         publish_json(&hub.client, &topics::room(&room.room_id), &room, true).await;
         hub.rooms.insert(room.room_id.clone(), room);
     }
+    let resident = read_resident(&resident_file).unwrap_or_else(default_resident);
+    hub.set_resident(resident).await;
     hub.registry.load().await;
     hub.publish_hub_status().await;
 
@@ -344,6 +441,7 @@ async fn main() {
         topics::device_control(),
         topics::alarm_control(),
         topics::hub_control(),
+        topics::resident_control(),
     ];
     for s in subs {
         if let Err(e) = client.subscribe(s.clone(), rumqttc::QoS::AtLeastOnce).await {
