@@ -62,13 +62,15 @@ inline DeviceInfo query_device_info() {
   CUDA_CHECK(cudaGetDeviceProperties(&d.prop, dev));
   CUDA_CHECK(cudaDriverGetVersion(&d.driver));
   CUDA_CHECK(cudaRuntimeGetVersion(&d.runtime));
-  // These attributes may be unavailable on newer toolkits; report "n/a"
-  // instead of aborting.
+  // The named enum constants for these two attributes are removed from
+  // newer CUDA headers (memory bus width is gone in 12.8); the numeric
+  // values (36, 37) are stable in the driver ABI. If the runtime rejects
+  // the query, the value stays -1 and is reported as "n/a".
   int v = 0;
-  if (cudaDeviceGetAttribute(&v, cudaDevAttrMemoryClockRate, dev) == cudaSuccess)
-    d.mem_clock_khz = v;
-  if (cudaDeviceGetAttribute(&v, cudaDevAttrMemoryBusWidth, dev) == cudaSuccess)
-    d.bus_width_bits = v;
+  if (cudaDeviceGetAttribute(&v, static_cast<cudaDeviceAttr>(36), dev) == cudaSuccess && v > 0)
+    d.mem_clock_khz = v;  // cudaDevAttrMemoryClockRate, kHz
+  if (cudaDeviceGetAttribute(&v, static_cast<cudaDeviceAttr>(37), dev) == cudaSuccess && v > 0)
+    d.bus_width_bits = v;  // cudaDevAttrMemoryBusWidth, bits
   cudaGetLastError();  // clear sticky error from unavailable attributes
   if (d.mem_clock_khz > 0 && d.bus_width_bits > 0)
     d.peak_gbps = 2.0 * (d.mem_clock_khz * 1e3) * (d.bus_width_bits / 8.0) / 1e9;
