@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx", "src/web/server.ts"],
+      "port": 3000
+    }
+  ]
+}

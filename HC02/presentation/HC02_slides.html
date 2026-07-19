@@ -1,0 +1,738 @@
+<meta charset="utf-8">
+<title>HC02 · SIMT, Divergence & Memory Bandwidth</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --stage: #fdfefc;
+    --ink: #1c2420;
+    --muted: #5a675f;
+    --faint: #8a968d;
+    --line: #dde4dd;
+    --line-soft: #e9eee8;
+    --gpu: #3e8914;
+    --gpu-deep: #2f6e0e;
+    --gpu-soft: #e3efd9;
+    --cpu: #4a6fa5;
+    --cpu-soft: #e2e9f3;
+    --pend: #a1761c;
+    --pend-soft: #f5ead2;
+    --shadow: 0 24px 70px rgba(28, 36, 32, .14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d120e;
+      --stage: #141b15;
+      --ink: #e9eee9;
+      --muted: #9aa79d;
+      --faint: #6b776e;
+      --line: #263028;
+      --line-soft: #1d251e;
+      --gpu: #7bc950;
+      --gpu-deep: #9ad973;
+      --gpu-soft: #1e2b18;
+      --cpu: #82a8d8;
+      --cpu-soft: #1a2330;
+      --pend: #d9a544;
+      --pend-soft: #2c2415;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .5);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f5; --stage: #fdfefc; --ink: #1c2420; --muted: #5a675f;
+    --faint: #8a968d; --line: #dde4dd; --line-soft: #e9eee8;
+    --gpu: #3e8914; --gpu-deep: #2f6e0e; --gpu-soft: #e3efd9;
+    --cpu: #4a6fa5; --cpu-soft: #e2e9f3;
+    --pend: #a1761c; --pend-soft: #f5ead2;
+    --shadow: 0 24px 70px rgba(28, 36, 32, .14);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d120e; --stage: #141b15; --ink: #e9eee9; --muted: #9aa79d;
+    --faint: #6b776e; --line: #263028; --line-soft: #1d251e;
+    --gpu: #7bc950; --gpu-deep: #9ad973; --gpu-soft: #1e2b18;
+    --cpu: #82a8d8; --cpu-soft: #1a2330;
+    --pend: #d9a544; --pend-soft: #2c2415;
+    --shadow: 0 24px 70px rgba(0, 0, 0, .5);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+  }
+  .mono { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; }
+
+  #viewport {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage {
+    width: 1280px; height: 720px;
+    position: relative;
+    flex: none;
+    background: var(--stage);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    padding: 58px 72px 64px;
+    display: none;
+    flex-direction: column;
+  }
+  .slide.active { display: flex; }
+  @media (prefers-reduced-motion: no-preference) {
+    .slide.active { animation: slidein .28s ease-out; }
+    @keyframes slidein { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+  }
+
+  /* header: eyebrow + warp lane strip */
+  .head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 24px; margin-bottom: 26px;
+  }
+  .eyebrow {
+    font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace;
+    font-size: 13px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .eyebrow b { color: var(--gpu); font-weight: 600; }
+  .lanes { display: flex; gap: 3px; flex: none; }
+  .lanes i {
+    width: 7px; height: 16px; border-radius: 1.5px;
+    background: var(--line); display: block;
+  }
+  .lanes i.g { background: var(--gpu); }
+  .lanes i.c { background: var(--cpu); }
+  .lanes i.dim { background: var(--line-soft); }
+
+  h1 {
+    font-size: 64px; line-height: 1.04; margin: 0;
+    letter-spacing: -0.022em; font-weight: 750; text-wrap: balance;
+  }
+  h2 {
+    font-size: 40px; line-height: 1.1; margin: 0 0 10px;
+    letter-spacing: -0.018em; font-weight: 720; text-wrap: balance;
+  }
+  .sub { font-size: 21px; color: var(--muted); line-height: 1.5; max-width: 30em; }
+
+  .body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+  .foot {
+    display: flex; justify-content: space-between; align-items: baseline;
+    color: var(--faint); font-size: 13px; margin-top: auto; padding-top: 18px;
+  }
+  .foot .mono { font-size: 12.5px; letter-spacing: .06em; }
+
+  /* reusable bits */
+  .cols { display: grid; gap: 28px; flex: 1; min-height: 0; }
+  .cols.c2 { grid-template-columns: 1fr 1fr; }
+  .cols.c2w { grid-template-columns: 1.25fr 1fr; }
+
+  .card {
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 20px 22px; background: var(--stage);
+  }
+  .card h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; line-height: 1.5; }
+  .card .tag {
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 11.5px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--gpu);
+    display: block; margin-bottom: 10px;
+  }
+  .card.cpu .tag { color: var(--cpu); }
+
+  ul.tight { margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.55; color: var(--ink); }
+  ul.tight li { margin-bottom: 10px; }
+  ul.tight li::marker { color: var(--gpu); }
+  ul.tight .dim { color: var(--muted); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px dashed var(--pend); color: var(--pend);
+    background: var(--pend-soft);
+    border-radius: 999px; padding: 5px 14px;
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 12px;
+    letter-spacing: .05em;
+  }
+  .chip::before { content: "●"; font-size: 9px; }
+
+  .tbd {
+    font-family: "Cascadia Code", Consolas, monospace;
+    color: var(--pend); font-weight: 600;
+    border-bottom: 2px dashed var(--pend);
+    padding: 0 2px;
+    white-space: nowrap;
+  }
+
+  .kpis { display: flex; gap: 14px; flex-wrap: wrap; }
+  .kpi {
+    border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px;
+    min-width: 170px; background: var(--stage);
+  }
+  .kpi .v {
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 24px; font-weight: 600; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; letter-spacing: .04em; }
+
+  table.res {
+    border-collapse: collapse; width: 100%; font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  table.res th, table.res td { padding: 8px 12px; text-align: right; }
+  table.res th {
+    font-family: "Cascadia Code", Consolas, monospace; font-weight: 600;
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); border-bottom: 1.5px solid var(--line);
+  }
+  table.res td { border-bottom: 1px solid var(--line-soft); }
+  table.res td:first-child, table.res th:first-child { text-align: left; }
+
+  figure { margin: 0; display: flex; flex-direction: column; min-height: 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 12.5px; color: var(--faint); margin-top: 10px; line-height: 1.45; }
+
+  .legend { display: flex; gap: 18px; font-size: 13.5px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 18px; height: 3.5px; border-radius: 2px; display: inline-block; }
+
+  /* chart line colors via classes */
+  .st-gpu  { stroke: var(--gpu); }
+  .st-gpu2 { stroke: var(--gpu-deep); }
+  .st-cpu  { stroke: var(--cpu); }
+  .st-ideal{ stroke: var(--faint); }
+  .st-grid { stroke: var(--line-soft); }
+  .st-axis { stroke: var(--line); }
+  .fill-gpu { fill: var(--gpu); }
+  .fill-gpu2 { fill: var(--gpu-deep); }
+  .fill-cpu { fill: var(--cpu); }
+  .fill-muted { fill: var(--muted); }
+  .svgtxt { font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; fill: var(--muted); }
+
+  /* title slide */
+  .title-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 26px; }
+  .title-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .title-meta span {
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 13px;
+    color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; letter-spacing: .04em;
+  }
+  .biglanes { display: flex; gap: 6px; margin-bottom: 6px; }
+  .biglanes i { width: 14px; height: 34px; border-radius: 3px; background: var(--gpu); opacity: .92; }
+  .biglanes i:nth-child(4n+2) { height: 26px; align-self: flex-end; opacity: .55; }
+  .biglanes i:nth-child(4n) { height: 42px; opacity: .75; }
+
+  /* takeaways */
+  .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .rule { border-left: 3px solid var(--gpu); padding: 4px 0 4px 18px; }
+  .rule h3 { margin: 0 0 6px; font-size: 19px; letter-spacing: -0.01em; }
+  .rule p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+  /* nav ui */
+  #hud {
+    position: absolute; right: 26px; bottom: 18px;
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 13px;
+    color: var(--faint); user-select: none;
+    font-variant-numeric: tabular-nums;
+  }
+  #hint {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    font-size: 12px; color: var(--faint);
+    font-family: "Cascadia Code", Consolas, monospace; letter-spacing: .05em;
+  }
+</style>
+
+<div id="viewport">
+  <div id="stage">
+
+    <!-- 1 · Title -->
+    <section class="slide" data-lanes="all">
+      <div class="head">
+        <div class="eyebrow">Heterogeneous Computing · <b>Übungsblatt 2</b></div>
+      </div>
+      <div class="title-wrap">
+        <div class="biglanes" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <h1>One chip,<br>a factor of 100.</h1>
+        <p class="sub">SIMT, warp divergence and memory bandwidth: what control flow
+          and data layout really cost on a GPU, measured against a CPU.</p>
+        <div class="title-meta">
+          <span>CUDA 12 · NVIDIA T4 (Colab)</span>
+          <span>cudaEvent timing · median of 10</span>
+          <span>CPU baseline: OpenMP</span>
+        </div>
+      </div>
+      <div class="foot"><span>Blatt 2 · Aufgaben 1 &amp; 2</span><span class="mono">2026S-HC</span></div>
+    </section>
+
+    <!-- 2 · Motivation -->
+    <section class="slide" data-lanes="half">
+      <div class="head">
+        <div class="eyebrow">Motivation</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>Two questions, one micro-benchmark each</h2>
+      <div class="body">
+        <div class="cols c2" style="align-content:start">
+          <div class="card">
+            <span class="tag">Task 1 · compute-bound</span>
+            <h3>What does control flow cost?</h3>
+            <p>One float in, 1024 fused multiply-adds, one float out.
+               First scale the thread count until the GPU saturates, then force a warp
+               to execute d = 1 … 32 distinct paths and watch the price of divergence.</p>
+          </div>
+          <div class="card">
+            <span class="tag">Task 2 · memory-bound</span>
+            <h3>What does data layout cost?</h3>
+            <p>A streaming kernel, <span class="mono">b[j] = a[j]·c</span>, under three
+               address patterns: coalesced, strided, random gather. Then the same kernel
+               with the number of resident warps throttled, to see latency hiding at work.</p>
+          </div>
+        </div>
+        <p class="sub" style="margin-top:22px">Same silicon in every run. The only thing
+          that changes is how we ask it to work, and the answer spans two orders of magnitude.</p>
+      </div>
+      <div class="foot"><span>GPU <i style="color:var(--gpu)">■</i> vs CPU <i style="color:var(--cpu)">■</i>, this color code holds for the whole talk</span><span class="mono">blatt02/src</span></div>
+    </section>
+
+    <!-- 3 · Method -->
+    <section class="slide" data-lanes="all">
+      <div class="head">
+        <div class="eyebrow">Methodology</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>Measure honestly, or not at all</h2>
+      <div class="body">
+        <div class="cols c2" style="grid-template-rows: 1fr 1fr; align-content:stretch">
+          <div class="card"><span class="tag">Timing</span>
+            <h3>Kernel only, median of 10</h3>
+            <p><span class="mono">cudaEvent</span> pairs around the kernel, no transfers in
+               the timed window. 3 warmup launches absorb one-time costs; the median of 10
+               timed launches shrugs off cloud noise.</p></div>
+          <div class="card"><span class="tag">Workload</span>
+            <h3>Countable FLOPs</h3>
+            <p>Pure FMA chains, 2 FLOP per instruction, fast math off. Every result is
+               written back, so the compiler can delete nothing and the GFLOP/s
+               bookkeeping is exact.</p></div>
+          <div class="card"><span class="tag">Portability</span>
+            <h3>Nothing hardcoded</h3>
+            <p>SM count, peak bandwidth, occupancy, free memory: all queried at runtime.
+               The same binaries run on any GPU of compute capability ≥ 7.0.</p></div>
+          <div class="card"><span class="tag">Integrity</span>
+            <h3>Validated &amp; reproducible</h3>
+            <p>Every memory kernel is checksummed against a permutation-invariant
+               reference. Fixed seeds, CSVs with hardware provenance, plots regenerated
+               by one script.</p></div>
+        </div>
+      </div>
+      <div class="foot"><span>Hardware: NVIDIA T4 via Google Colab · CPU: host cores via OpenMP</span><span class="mono">common.cuh</span></div>
+    </section>
+
+    <!-- 4 · SIMT model -->
+    <section class="slide" data-lanes="d2">
+      <div class="head">
+        <div class="eyebrow">The model</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>A warp is 32 threads on one instruction stream</h2>
+      <div class="body">
+        <div class="cols c2w">
+          <figure>
+            <svg viewBox="0 0 560 300" role="img" aria-label="Warp executing a branch: both paths run one after the other with half the lanes masked off">
+              <text x="0" y="16" class="svgtxt">warp (32 lanes), branch with two targets</text>
+              <!-- convergent block -->
+              <g>
+                <text x="0" y="52" class="svgtxt">convergent</text>
+                <g id="rowA"></g>
+              </g>
+              <!-- path A -->
+              <g>
+                <text x="0" y="122" class="svgtxt">path A</text>
+                <g id="rowB"></g>
+              </g>
+              <!-- path B -->
+              <g>
+                <text x="0" y="192" class="svgtxt">path B</text>
+                <g id="rowC"></g>
+              </g>
+              <!-- reconverge -->
+              <g>
+                <text x="0" y="262" class="svgtxt">reconverged</text>
+                <g id="rowD"></g>
+              </g>
+              <line x1="95" y1="30" x2="95" y2="285" class="st-grid" stroke-width="1"/>
+            </svg>
+            <figcaption>Time runs downward. The two branch targets do not run in parallel:
+              the warp executes path A with half its lanes masked off, then path B with the
+              other half. Cost ≈ sum of both paths.</figcaption>
+          </figure>
+          <ul class="tight" style="align-self:center">
+            <li>One program counter per warp (pre-Volta). A branch cannot fork it,
+                so divergent targets execute <em>sequentially</em> under an
+                <em>active mask</em>.</li>
+            <li>Volta+ gives each thread its own PC, but a scheduler still issues one
+                instruction per cycle per lane group. Divergent instruction streams stay
+                serialized.</li>
+            <li class="dim">Hypothesis for the experiment: d distinct paths per warp
+                should cost a factor of d.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot"><span>SIMT: single instruction, multiple threads</span><span class="mono">task1_divergence.cu</span></div>
+    </section>
+
+    <!-- 5 · Exp A -->
+    <section class="slide" data-lanes="fill">
+      <div class="head">
+        <div class="eyebrow">Task 1 · <b>Experiment A</b> · throughput scaling</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>The GPU has to be flooded before it flows</h2>
+      <div class="body">
+        <div class="cols c2w">
+          <figure>
+            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: GFLOP/s versus problem size, GPU rises then saturates, CPU flat">
+              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
+              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
+              <text x="6" y="24" class="svgtxt">GFLOP/s</text>
+              <text x="6" y="38" class="svgtxt">(log)</text>
+              <text x="480" y="284" class="svgtxt">n (log)</text>
+              <text x="56" y="284" class="svgtxt">2^10</text>
+              <text x="270" y="284" class="svgtxt">2^18</text>
+              <line x1="330" y1="26" x2="330" y2="256" class="st-grid" stroke-width="1" stroke-dasharray="3 4"/>
+              <text x="338" y="40" class="svgtxt">saturation n = 2^__</text>
+              <path d="M 60 236 C 160 232, 220 200, 280 120 C 310 78, 330 52, 380 44 L 535 40"
+                    fill="none" class="st-gpu" stroke-width="3.5" stroke-linecap="round"/>
+              <line x1="60" y1="196" x2="535" y2="196" class="st-cpu" stroke-width="3" stroke-linecap="round"/>
+              <line x1="60" y1="222" x2="535" y2="222" class="st-cpu" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
+              <text x="440" y="60" class="svgtxt" style="fill:var(--gpu)">GPU</text>
+              <text x="440" y="190" class="svgtxt" style="fill:var(--cpu)">CPU · all cores</text>
+              <text x="440" y="240" class="svgtxt" style="fill:var(--cpu)">CPU · 1 thread</text>
+            </svg>
+            <figcaption>Schematic shape. The measured figure is
+              <span class="mono">results/plots/task1_scaling.png</span> from the committed CSVs.</figcaption>
+          </figure>
+          <div style="align-self:center; display:flex; flex-direction:column; gap:16px">
+            <div class="kpis" style="flex-direction:column">
+              <div class="kpi"><div class="v"><span class="tbd">n = 2^__</span></div>
+                <div class="l">saturation point ≙ <span class="tbd">__</span> threads/SM</div></div>
+              <div class="kpi"><div class="v"><span class="tbd">____</span> GFLOP/s</div>
+                <div class="l">GPU peak, vs <span class="tbd">__</span> GFLOP/s CPU (all cores)</div></div>
+            </div>
+            <p class="sub" style="font-size:16px">Below saturation there are too few resident
+              warps to hide instruction latency and too few blocks to fill the SMs.
+              The CPU has no such threshold: its lines are flat from the first kilobyte.</p>
+            <span class="chip">values pending · Colab measurement run</span>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Sweep n = 2^10 … 2^26 · k = 1024 · block 256</span><span class="mono">task1_scaling.csv</span></div>
+    </section>
+
+    <!-- 6 · Exp B -->
+    <section class="slide" data-lanes="d4">
+      <div class="head">
+        <div class="eyebrow">Task 1 · <b>Experiment B</b> · controlled divergence</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>d paths per warp cost a factor of d</h2>
+      <div class="body">
+        <div class="cols c2w">
+          <figure>
+            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: relative throughput versus divergence degree, GPU follows 1/d, CPU flat">
+              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
+              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
+              <text x="6" y="24" class="svgtxt">rel. throughput</text>
+              <text x="6" y="38" class="svgtxt">(log)</text>
+              <text x="370" y="284" class="svgtxt">d (log)</text>
+              <text x="60" y="284" class="svgtxt">1</text><text x="250" y="284" class="svgtxt">8</text><text x="500" y="284" class="svgtxt">32</text>
+              <line x1="64" y1="40" x2="530" y2="230" class="st-ideal" stroke-width="2" stroke-dasharray="3 5"/>
+              <path d="M 64 44 L 530 238" fill="none" class="st-gpu" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M 64 40 C 200 46, 400 48, 530 48" fill="none" class="st-cpu" stroke-width="3" stroke-linecap="round"/>
+              <path d="M 64 42 C 160 58, 260 88, 530 96" fill="none" class="st-gpu" stroke-width="2.5" stroke-dasharray="7 6" stroke-linecap="round"/>
+            </svg>
+            <div class="legend">
+              <span><i style="background:var(--gpu)"></i>GPU · branch</span>
+              <span><i style="background:repeating-linear-gradient(90deg, var(--gpu) 0 6px, transparent 6px 10px)"></i>GPU · loop length</span>
+              <span><i style="background:var(--cpu)"></i>CPU</span>
+              <span><i style="background:repeating-linear-gradient(90deg, var(--faint) 0 3px, transparent 3px 7px)"></i>ideal 1/d</span>
+            </div>
+            <figcaption>Schematic shape; measured figure:
+              <span class="mono">results/plots/task1_divergence.png</span>.
+              Loop-length variant saturates near 2×: warp time = slowest lane, total work constant.</figcaption>
+          </figure>
+          <div style="align-self:center">
+            <table class="res">
+              <tr><th>d</th><th>GPU slowdown</th><th>ideal</th><th>CPU</th></tr>
+              <tr><td>2</td><td><span class="tbd">__</span></td><td>2</td><td><span class="tbd">__</span></td></tr>
+              <tr><td>8</td><td><span class="tbd">__</span></td><td>8</td><td><span class="tbd">__</span></td></tr>
+              <tr><td>32</td><td><span class="tbd">__</span></td><td>32</td><td><span class="tbd">~1</span></td></tr>
+            </table>
+            <p class="sub" style="font-size:15.5px; margin-top:16px">Design rule: every path does
+              <em>identical work</em> (k FMAs), just operationally distinct code, so the compiler
+              cannot merge branches and any slowdown is pure serialization.</p>
+            <span class="chip" style="margin-top:10px">values pending · Colab measurement run</span>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Branch on threadIdx.x mod d · n = 2^24 · k = 1024</span><span class="mono">task1_divergence.csv</span></div>
+    </section>
+
+    <!-- 7 · Why -->
+    <section class="slide" data-lanes="halves">
+      <div class="head">
+        <div class="eyebrow">Explanation</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>Serialization vs. speculation</h2>
+      <div class="body">
+        <div class="cols c2">
+          <div class="card">
+            <span class="tag">GPU · why it pays factor d</span>
+            <h3>One instruction stream per warp</h3>
+            <ul class="tight" style="font-size:15.5px; margin-top:8px">
+              <li>Pre-Volta: a single program counter for 32 lanes. Divergent targets run
+                  one after another under the active mask.</li>
+              <li>With d paths, each pass keeps only 32/d lanes busy: d× the time for
+                  the same work.</li>
+              <li>Volta+ independent thread scheduling changes bookkeeping, not the
+                  economics: divergent streams still issue serially.</li>
+            </ul>
+          </div>
+          <div class="card cpu">
+            <span class="tag">CPU · why the same branch is ~free</span>
+            <h3>Every core is its own machine</h3>
+            <ul class="tight" style="font-size:15.5px; margin-top:8px">
+              <li>Independent control flow per core: no lane group that has to wait
+                  through foreign paths.</li>
+              <li>The pattern <span class="mono">i&nbsp;mod&nbsp;d</span> is perfectly periodic:
+                  the branch predictor learns it, prediction is near 100%.</li>
+              <li>Speculative, out-of-order execution hides what little remains:
+                  the measured curve stays flat over d.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="sub" style="margin-top:20px; font-size:16px">Same source-level
+          <span class="mono">if</span>, two opposite hardware answers. This asymmetry, not raw
+          FLOPs, is the first thing that decides what belongs on which device.</p>
+      </div>
+      <div class="foot"><span>Aufgabe 1 · required explanation</span><span class="mono">REPORT.md §2</span></div>
+    </section>
+
+    <!-- 8 · Exp C -->
+    <section class="slide" data-lanes="stride">
+      <div class="head">
+        <div class="eyebrow">Task 2 · <b>Experiment C</b> · access patterns</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>Same bytes, wildly different bandwidth</h2>
+      <div class="body">
+        <div class="cols c2w">
+          <figure>
+            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: bandwidth by access pattern; coalesced high, strided decaying, random lowest">
+              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
+              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
+              <text x="6" y="24" class="svgtxt">GB/s</text>
+              <text x="470" y="284" class="svgtxt">stride (log)</text>
+              <line x1="60" y1="34" x2="535" y2="34" class="st-ideal" stroke-width="2" stroke-dasharray="3 5"/>
+              <text x="60" y="28" class="svgtxt">theoretical peak (2 · clock · bus)</text>
+              <line x1="60" y1="58" x2="535" y2="58" class="st-gpu" stroke-width="3" stroke-linecap="round"/>
+              <text x="380" y="52" class="svgtxt" style="fill:var(--gpu)">coalesced = practical peak</text>
+              <path d="M 60 62 C 140 90, 200 160, 280 205 C 360 240, 450 244, 535 244"
+                    fill="none" class="st-gpu" stroke-width="3.5" stroke-dasharray="8 6" stroke-linecap="round"/>
+              <text x="192" y="116" class="svgtxt" style="fill:var(--gpu)">strided</text>
+              <line x1="60" y1="238" x2="535" y2="238" stroke-width="3" class="st-gpu2" stroke-dasharray="2 5" stroke-linecap="round"/>
+              <text x="70" y="230" class="svgtxt">random gather</text>
+            </svg>
+            <figcaption>Schematic; measured figure:
+              <span class="mono">results/plots/task2_patterns.png</span>. Convention: 8 B per element
+              (4 read + 4 write); the gather's 4 B/element index traffic comes on top.</figcaption>
+          </figure>
+          <div style="align-self:center; display:flex; flex-direction:column; gap:16px">
+            <div class="kpis" style="flex-direction:column">
+              <div class="kpi"><div class="v"><span class="tbd">___</span> GB/s · <span class="tbd">__%</span></div>
+                <div class="l">coalesced, as share of theoretical peak</div></div>
+              <div class="kpi"><div class="v"><span class="tbd">___</span> GB/s</div>
+                <div class="l">random gather · <span class="tbd">__%</span> of practical peak</div></div>
+            </div>
+            <p class="sub" style="font-size:16px">A warp reading 32 consecutive floats is
+              <em>one</em> 128-byte transaction. Strided or random lanes shatter it into up
+              to 32 transactions whose cache lines are mostly thrown away.</p>
+            <span class="chip">values pending · Colab measurement run</span>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>n = 2^26 · every variant checksummed against sum(a)·c</span><span class="mono">task2_patterns.csv</span></div>
+    </section>
+
+    <!-- 9 · Exp D -->
+    <section class="slide" data-lanes="grow">
+      <div class="head">
+        <div class="eyebrow">Task 2 · <b>Experiment D</b> · latency hiding</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>Enough warps, and DRAM becomes the wall</h2>
+      <div class="body">
+        <div class="cols c2w">
+          <figure>
+            <svg viewBox="0 0 560 300" role="img" aria-label="Schematic: bandwidth versus occupancy rises then plateaus">
+              <line x1="52" y1="20" x2="52" y2="256" class="st-axis" stroke-width="1.5"/>
+              <line x1="52" y1="256" x2="540" y2="256" class="st-axis" stroke-width="1.5"/>
+              <text x="6" y="24" class="svgtxt">GB/s</text>
+              <text x="360" y="284" class="svgtxt">occupancy (%)</text>
+              <text x="60" y="284" class="svgtxt">12.5</text><text x="290" y="284" class="svgtxt">50</text><text x="510" y="284" class="svgtxt">100</text>
+              <path d="M 64 220 C 150 160, 220 92, 300 62 C 360 44, 450 40, 535 40"
+                    fill="none" class="st-gpu" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M 120 226 C 200 170, 260 100, 330 66 C 390 48, 460 44, 535 44"
+                    fill="none" class="st-gpu" stroke-width="2.5" stroke-dasharray="7 6" stroke-linecap="round"/>
+              <text x="90" y="120" class="svgtxt" style="fill:var(--gpu)">block-size sweep</text>
+              <text x="330" y="100" class="svgtxt" style="fill:var(--gpu)">smem throttle (block 256)</text>
+              <line x1="330" y1="30" x2="330" y2="256" class="st-grid" stroke-width="1" stroke-dasharray="3 4"/>
+              <text x="338" y="246" class="svgtxt">plateau from ~__%</text>
+            </svg>
+            <figcaption>Schematic; measured figure:
+              <span class="mono">results/plots/task2_occupancy.png</span>. Occupancy is throttled by
+              reserving <em>unused</em> dynamic shared memory per block; a grid-stride loop keeps
+              total work identical.</figcaption>
+          </figure>
+          <ul class="tight" style="align-self:center; font-size:16px">
+            <li>Latency hiding is oversubscription: on a memory stall the scheduler
+                switches to the next ready warp, so more resident warps mean fewer
+                idle cycles.</li>
+            <li>Beyond the knee the DRAM interface is saturated; extra occupancy
+                buys nothing.</li>
+            <li class="dim">Occupancy values are the runtime API's theoretical ones:
+                Nsight Compute counters are blocked on Colab (noted as a limitation).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot"><span>Two knobs: block size 32…1024 · smem cap at block 256</span><span class="mono">task2_occupancy.csv</span></div>
+    </section>
+
+    <!-- 10 · Takeaways -->
+    <section class="slide" data-lanes="all">
+      <div class="head">
+        <div class="eyebrow">Takeaways</div>
+        <div class="lanes" aria-hidden="true"></div>
+      </div>
+      <h2>Four rules the data pays for</h2>
+      <div class="body">
+        <div class="rules" style="margin-top:8px">
+          <div class="rule"><h3>Saturate first.</h3>
+            <p>A GPU below its saturation point is an expensive space heater. If the
+               problem cannot flood it with threads, it belongs on the CPU.</p></div>
+          <div class="rule"><h3>Keep warps convergent.</h3>
+            <p>d paths per warp cost d×. If branching is unavoidable, branch at warp
+               granularity, not per lane.</p></div>
+          <div class="rule"><h3>Layout is destiny.</h3>
+            <p>Structure-of-arrays, coalesced 32/128-byte transactions, no gathers you
+               can avoid. The same bytes move up to an order of magnitude slower when scattered.</p></div>
+          <div class="rule"><h3>Occupancy is a means.</h3>
+            <p>Enough resident warps to hide latency, then stop optimizing for it.
+               The plateau is the DRAM's opinion, not yours.</p></div>
+        </div>
+        <p class="sub" style="margin-top:26px; font-size:15.5px">
+          Every number in the report comes from committed CSVs
+          (<span class="mono">results/</span>), regenerable end-to-end with
+          <span class="mono">colab/run_colab.ipynb</span>. Questions welcome.</p>
+      </div>
+      <div class="foot"><span>Heterogeneous Computing · Übungsblatt 2</span><span class="mono">2026S-HC · blatt02/</span></div>
+    </section>
+
+    <div id="hud">1 / 10</div>
+  </div>
+</div>
+<div id="hint">← → navigate · F fullscreen</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const hud = document.getElementById('hud');
+  let cur = Math.min(Math.max((parseInt(location.hash.slice(1), 10) || 1) - 1, 0), slides.length - 1);
+
+  // Warp-lane strips: 32 ticks whose coloring encodes the slide's topic.
+  const patterns = {
+    all:    i => 'g',
+    half:   i => i < 16 ? 'g' : 'c',
+    halves: i => i % 2 ? 'c' : 'g',
+    d2:     i => i % 2 ? 'dim' : 'g',
+    d4:     i => i % 4 === 0 ? 'g' : 'dim',
+    stride: i => i % 8 === 0 ? 'g' : 'dim',
+    fill:   i => i < 22 ? 'g' : 'dim',
+    grow:   i => i < 28 ? 'g' : 'dim',
+  };
+  slides.forEach(s => {
+    const strip = s.querySelector('.lanes');
+    if (!strip) return;
+    const pat = patterns[s.dataset.lanes] || patterns.all;
+    for (let i = 0; i < 32; i++) {
+      const t = document.createElement('i');
+      const cls = pat(i);
+      if (cls) t.className = cls;
+      strip.appendChild(t);
+    }
+  });
+
+  function show(idx) {
+    cur = Math.min(Math.max(idx, 0), slides.length - 1);
+    slides.forEach((s, i) => s.classList.toggle('active', i === cur));
+    hud.textContent = (cur + 1) + ' / ' + slides.length;
+    history.replaceState(null, '', '#' + (cur + 1));
+  }
+  show(cur);
+
+  addEventListener('keydown', e => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'f') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+  document.getElementById('stage').addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const x = e.clientX / innerWidth;
+    show(x < 0.3 ? cur - 1 : cur + 1);
+  });
+
+  // Fit the fixed 1280x720 stage into the window.
+  const stage = document.getElementById('stage');
+  function fit() {
+    const s = Math.min(innerWidth / 1320, innerHeight / 780);
+    stage.style.transform = 'scale(' + Math.min(s, 1.6) + ')';
+  }
+  fit();
+  addEventListener('resize', fit);
+
+  // SIMT diagram lane rows (slide 4), drawn programmatically.
+  function laneRow(id, y, activeFn, colorActive) {
+    const g = document.getElementById(id);
+    if (!g) return;
+    for (let i = 0; i < 32; i++) {
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      const active = activeFn(i);
+      r.setAttribute('x', 105 + i * 13.5);
+      r.setAttribute('y', y);
+      r.setAttribute('width', 9.5);
+      r.setAttribute('height', 26);
+      r.setAttribute('rx', 2);
+      r.setAttribute('class', active ? colorActive : '');
+      if (!active) r.setAttribute('style', 'fill:var(--line-soft)');
+      g.appendChild(r);
+    }
+  }
+  laneRow('rowA', 32, () => true, 'fill-gpu');
+  laneRow('rowB', 102, i => i % 2 === 0, 'fill-gpu');
+  laneRow('rowC', 172, i => i % 2 === 1, 'fill-gpu2');
+  laneRow('rowD', 242, () => true, 'fill-gpu');
+</script>

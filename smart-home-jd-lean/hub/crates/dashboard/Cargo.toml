@@ -1,0 +1,20 @@
+[package]
+name = "dashboard"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "dashboard"
+path = "src/main.rs"
+
+[dependencies]
+shared.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rumqttc.workspace = true
+tokio.workspace = true
+chrono.workspace = true
+axum.workspace = true
+async-stream = "0.3"
+futures-core = "0.3"

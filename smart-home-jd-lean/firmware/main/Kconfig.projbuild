@@ -1,0 +1,39 @@
+menu "Assisted-Living device configuration"
+
+    config ALSH_WIFI_SSID
+        string "Wi-Fi SSID"
+        default "myssid"
+        help
+            SSID of the access point the device connects to.
+
+    config ALSH_WIFI_PASSWORD
+        string "Wi-Fi password"
+        default "mypassword"
+        help
+            WPA2 password for the access point.
+
+    config ALSH_MQTT_URI
+        string "MQTT broker URI"
+        default "mqtt://192.168.1.10:1883"
+        help
+            URI of the Mosquitto broker, e.g. mqtt://<hub-ip>:1883.
+
+    choice ALSH_DEVICE_TYPE
+        prompt "Device role"
+        default ALSH_DEVICE_TYPE_DOOR
+        help
+            Which kind of sensor this firmware image acts as.
+
+        config ALSH_DEVICE_TYPE_DOOR
+            bool "Door / contact sensor"
+        config ALSH_DEVICE_TYPE_MOTION
+            bool "Motion sensor"
+        config ALSH_DEVICE_TYPE_BED
+            bool "Bed occupancy sensor"
+        config ALSH_DEVICE_TYPE_STOVE
+            bool "Stove guard"
+        config ALSH_DEVICE_TYPE_SOS
+            bool "SOS panic button"
+    endchoice
+
+endmenu

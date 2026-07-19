@@ -1,0 +1,19 @@
+# Rust
+hub/target/
+
+# ESP-IDF
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/managed_components/
+firmware/dependencies.lock
+firmware/host-test/test_sensors
+
+# Runtime state (created by the hub)
+data/*.json
+
+# Misc
+*.log
+.DS_Store
+.env
+node_modules/
