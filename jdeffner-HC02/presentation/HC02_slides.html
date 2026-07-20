@@ -406,20 +406,23 @@
         <div class="cols c2w">
           <figure>
             <img src="../blatt02/results/plots/task1_scaling.png"
-                 alt="Measured GFLOP/s versus problem size: GPU rises from 171 to a ~4,400 GFLOP/s plateau at n = 2^20, CPU lines flat near 1.5 and 2.9 GFLOP/s">
-            <figcaption>Measured on the T4 (median of 10). The 6,853 GFLOP/s outlier at
-              n = 2^26 is the boost clock ramping up, no clock control on Colab.</figcaption>
+                 alt="Measured GFLOP/s versus problem size: GPU starts below both CPU lines at n = 4, crosses them near n = 16, and reaches a ~5,200 GFLOP/s plateau at n = 2^20; CPU lines flat near 1.6 and 3.2 GFLOP/s">
+            <figcaption>Measured on the T4 (median of 10), swept from n = 4 so both ends show.
+              The 6,446 GFLOP/s outlier at n = 2^26 is the boost clock ramping up, no clock
+              control on Colab.</figcaption>
           </figure>
           <div style="align-self:center; display:flex; flex-direction:column; gap:16px">
             <div class="kpis" style="flex-direction:column">
+              <div class="kpi"><div class="v">n &lt; 16</div>
+                <div class="l">GPU loses to the CPU: ~10 µs launch overhead dwarfs the work</div></div>
               <div class="kpi"><div class="v">n = 2^20</div>
                 <div class="l">saturation point ≙ ~26k scheduled threads/SM (~26 waves)</div></div>
-              <div class="kpi"><div class="v">4,365 GFLOP/s</div>
-                <div class="l">GPU plateau, vs 2.9 GFLOP/s CPU (2 cores): ~1,500×</div></div>
+              <div class="kpi"><div class="v">5,173 GFLOP/s</div>
+                <div class="l">GPU plateau, vs 3.2 GFLOP/s CPU (2 cores): ~1,600×</div></div>
             </div>
             <p class="sub" style="font-size:16px">Below saturation there are too few resident
               warps to hide instruction latency and too few blocks to fill the SMs.
-              The CPU has no such threshold: its lines are flat from the first kilobyte.</p>
+              The CPU has no such threshold: its lines are flat over the whole sweep.</p>
           </div>
         </div>
       </div>
@@ -438,21 +441,22 @@
           <figure>
             <img src="../blatt02/results/plots/task1_divergence.png"
                  alt="Measured relative throughput versus divergence degree: GPU branch line tracks the ideal 1/d slope at about two thirds of its cost, GPU loop-length variant saturates near one half, CPU lines stay flat">
-            <figcaption>Measured figure. Loop-length variant saturates at 1.92×:
+            <figcaption>Measured figure. Loop-length variant saturates at 1.85×:
               warp time = slowest lane, total work constant.</figcaption>
           </figure>
           <div style="align-self:center">
             <table class="res">
               <tr><th>d</th><th>GPU slowdown</th><th>ideal</th><th>CPU</th></tr>
-              <tr><td>2</td><td>1.46</td><td>2</td><td>1.00</td></tr>
-              <tr><td>8</td><td>5.37</td><td>8</td><td>1.03</td></tr>
-              <tr><td>32</td><td>21.3</td><td>32</td><td>1.02</td></tr>
+              <tr><td>2</td><td>1.79</td><td>2</td><td>flat*</td></tr>
+              <tr><td>8</td><td>5.09</td><td>8</td><td>flat*</td></tr>
+              <tr><td>32</td><td>19.9</td><td>32</td><td>flat*</td></tr>
             </table>
-            <p class="sub" style="font-size:15.5px; margin-top:16px">Design rule: every path does
-              <em>identical work</em> (k FMAs), just operationally distinct code, so the compiler
-              cannot merge branches and any slowdown is pure serialization.
-              Measured ≈ 2/3 of ideal: the d = 1 chain is latency-bound, and Volta+
-              interleaves the divergent streams (next slide).</p>
+            <p class="sub" style="font-size:15.5px; margin-top:16px">*CPU absolute times show no
+              trend over d (~170 ms; the d = 1 reference itself was a VM-noise outlier, so ratios
+              mislead). Design rule: every path does <em>identical work</em> (k FMAs), just
+              operationally distinct code, so the compiler cannot merge branches and any slowdown
+              is pure serialization. Measured ≈ 2/3 of ideal: the d = 1 chain is latency-bound,
+              and Volta+ interleaves the divergent streams (next slide).</p>
           </div>
         </div>
       </div>
@@ -477,7 +481,7 @@
               <li>With d paths, each pass keeps only 32/d lanes busy: d× the time for
                   the same work.</li>
               <li>Volta+ independent thread scheduling still issues divergent streams
-                  serially, but may interleave them; that is the measured 21.3× instead
+                  serially, but may interleave them; that is the measured 19.9× instead
                   of 32×. The economics survive, softened by a third.</li>
             </ul>
           </div>
@@ -512,17 +516,17 @@
         <div class="cols c2w">
           <figure>
             <img src="../blatt02/results/plots/task2_patterns.png"
-                 alt="Measured bandwidth by access pattern: coalesced 247 GB/s just under the 320 GB/s theoretical peak line, strided decaying from 87 to 6 GB/s over strides 2 to 128, random gather at 14 GB/s">
+                 alt="Measured bandwidth by access pattern: coalesced 243 GB/s just under the 320 GB/s theoretical peak line, strided decaying from 87 to 6 GB/s over strides 2 to 128, random gather at 14 GB/s">
             <figcaption>Measured figure. Convention: 8 B per element
               (4 read + 4 write); the gather's 4 B/element index traffic comes on top
               (counting it: 21.6 GB/s).</figcaption>
           </figure>
           <div style="align-self:center; display:flex; flex-direction:column; gap:16px">
             <div class="kpis" style="flex-direction:column">
-              <div class="kpi"><div class="v">247 GB/s · 77%</div>
+              <div class="kpi"><div class="v">243 GB/s · 76%</div>
                 <div class="l">coalesced, as share of theoretical peak (320 GB/s)</div></div>
               <div class="kpi"><div class="v">14 GB/s</div>
-                <div class="l">random gather · 5.8% of practical peak</div></div>
+                <div class="l">random gather · 5.9% of practical peak</div></div>
             </div>
             <p class="sub" style="font-size:16px">A warp reading 32 consecutive floats is
               <em>one</em> 128-byte transaction. Strided or random lanes shatter it into up
@@ -545,18 +549,18 @@
         <div class="cols c2w">
           <figure>
             <img src="../blatt02/results/plots/task2_occupancy.png"
-                 alt="Measured bandwidth versus theoretical occupancy: shared-memory throttle rises from 158 GB/s at 25 percent to about 187 GB/s at 50 percent, then flat to 100 percent; block-size sweep flat between 181 and 185 GB/s">
+                 alt="Measured bandwidth versus theoretical occupancy: rises from 96 GB/s at 12.5 percent through 156 at 25 percent to about 185 GB/s at 50 percent, then flat to 100 percent">
             <figcaption>Measured figure. Occupancy is throttled by
-              reserving <em>unused</em> dynamic shared memory per block; a grid-stride loop keeps
-              total work identical.</figcaption>
+              reserving <em>unused</em> dynamic shared memory per block (at block 128 and 256);
+              a grid-stride loop keeps total work identical.</figcaption>
           </figure>
           <ul class="tight" style="align-self:center; font-size:16px">
             <li>Latency hiding is oversubscription: on a memory stall the scheduler
                 switches to the next ready warp, so more resident warps mean fewer
                 idle cycles.</li>
-            <li>Measured: 158 GB/s at 25% occupancy, ~187 GB/s from 50% on, flat to
-                100%. Even 8 warps/SM already deliver 85% of the plateau for this
-                pure streaming kernel.</li>
+            <li>Measured: 96 GB/s at 12.5% occupancy, 156 at 25%, ~185 from 50% on,
+                flat to 100%. Four warps per SM reach only half the plateau; sixteen
+                already saturate the DRAM.</li>
             <li>Beyond the knee the DRAM interface is saturated; extra occupancy
                 buys nothing.</li>
             <li class="dim">Occupancy values are the runtime API's theoretical ones:

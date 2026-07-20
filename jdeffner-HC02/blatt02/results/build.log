@@ -13,11 +13,11 @@
 -- Found OpenMP_CXX: -fopenmp (found version "4.5")
 -- Found OpenMP_CUDA: -fopenmp (found version "4.5")
 -- Found OpenMP: TRUE (found version "4.5")
--- Configuring done (13.1s)
+-- Configuring done (15.4s)
 -- Generating done (0.0s)
--- Build files have been written to: /content/Heterogeneous-Computing/jdeffner-HC02/blatt02/Heterogeneous-Computing/jdeffner-HC02/blatt02/build
-[ 16%] Building CUDA object CMakeFiles/task1_divergence.dir/src/task1_divergence.cu.o
-[ 33%] Building CUDA object CMakeFiles/task2_bandwidth.dir/src/task2_bandwidth.cu.o
+-- Build files have been written to: /content/Heterogeneous-Computing/jdeffner-HC02/blatt02/build
+[ 16%] Building CUDA object CMakeFiles/task2_bandwidth.dir/src/task2_bandwidth.cu.o
+[ 33%] Building CUDA object CMakeFiles/task1_divergence.dir/src/task1_divergence.cu.o
 [ 50%] Building CXX object CMakeFiles/cpu_baseline.dir/src/cpu_baseline.cpp.o
 [ 66%] Linking CXX executable cpu_baseline
 [ 66%] Built target cpu_baseline

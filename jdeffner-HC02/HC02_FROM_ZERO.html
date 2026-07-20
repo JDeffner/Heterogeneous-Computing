@@ -255,7 +255,7 @@
     <h2><span class="no">5</span>Experiment A · a GPU must be flooded before it flows</h2>
     <hr class="sect">
     <p><b>Setup:</b> give every thread the same small piece of pure arithmetic (1,024 chained multiply-adds, no
-      memory work worth mentioning), and vary only <em>how many</em> threads we launch: from about a thousand up to
+      memory work worth mentioning), and vary only <em>how many</em> threads we launch: from just <b>4</b> up to
       67 million. If the GPU were like a CPU, speed per unit of work would not depend on the amount.</p>
     <p><b>It depends enormously:</b></p>
     <div class="diagram">
@@ -264,7 +264,7 @@
         <line x1="60" y1="215" x2="600" y2="215" class="axis"/>
         <text x="8" y="20">speed</text>
         <text x="470" y="245">number of jobs given</text>
-        <text x="52" y="245" text-anchor="middle">1,000</text>
+        <text x="52" y="245" text-anchor="middle">4</text>
         <text x="330" y="245" text-anchor="middle">~1 million</text>
         <text x="580" y="245" text-anchor="middle">67 million</text>
         <line x1="330" y1="25" x2="330" y2="215" class="grid" stroke-dasharray="4 5"/>
@@ -278,14 +278,17 @@
       </svg>
       <div class="cap">Shape of the measured curve (the exact plot is
         <span class="mono">blatt02/results/plots/task1_scaling.png</span>). With few jobs, most of the 2,560 students
-        sit idle and the GPU is <em>slower than it looks on paper by a factor of 40</em>. From about a million jobs
+        sit idle, and below ~16 jobs the GPU is <em>outright slower than the CPU</em>: its fixed &ldquo;get
+        everyone started&rdquo; cost of ~10 microseconds outweighs the entire computation. From about a million jobs
         it reaches its plateau.</div>
     </div>
     <div class="card story">
       <span class="tag">Measured</span>
-      <p>GPU plateau: <b>~4,365 GFLOP/s</b>, reached from about <b>1 million threads</b>. The 2-core CPU managed
-        <b>2.9 GFLOP/s</b> with both cores, and was equally fast at every size, no warm-up scale needed. On this
-        workload the GPU ended up roughly <b>1,500&times;</b> faster, a lopsided comparison (2 cores, and the CPU
+      <p>At <b>n = 4</b> the GPU managed only <b>0.86 GFLOP/s</b>, losing to a single CPU core (1.09) and to both
+        cores (2.71); it overtakes the CPU from about <b>16 jobs</b>. GPU plateau: <b>~5,173 GFLOP/s</b>, reached
+        from about <b>1 million threads</b>. The 2-core CPU managed
+        <b>3.2 GFLOP/s</b> with both cores, and was equally fast at every size, no warm-up scale needed. On this
+        workload the GPU ended up roughly <b>1,600&times;</b> faster, a lopsided comparison (2 cores, and the CPU
         version could not use its own vector tricks), but the shape of the two curves is the honest lesson: the
         GPU needs a crowd, the CPU does not.</p>
     </div>
@@ -314,14 +317,14 @@
     <div class="diagram">
       <div class="bars">
         <div class="bar"><span class="lbl">d = 1</span><div class="track"><div class="fill" style="width:4.7%"></div><span class="val">1.0&times;</span></div></div>
-        <div class="bar"><span class="lbl">d = 2</span><div class="track"><div class="fill" style="width:6.9%"></div><span class="val">1.46&times;</span></div></div>
-        <div class="bar"><span class="lbl">d = 4</span><div class="track"><div class="fill" style="width:13.1%"></div><span class="val">2.8&times;</span></div></div>
-        <div class="bar"><span class="lbl">d = 8</span><div class="track"><div class="fill" style="width:25.2%"></div><span class="val">5.4&times;</span></div></div>
-        <div class="bar"><span class="lbl">d = 16</span><div class="track"><div class="fill" style="width:50%"></div><span class="val">10.7&times;</span></div></div>
-        <div class="bar"><span class="lbl">d = 32</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">21.3&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 2</span><div class="track"><div class="fill" style="width:9%"></div><span class="val">1.79&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 4</span><div class="track"><div class="fill" style="width:13.7%"></div><span class="val">2.7&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 8</span><div class="track"><div class="fill" style="width:25.5%"></div><span class="val">5.1&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 16</span><div class="track"><div class="fill" style="width:50%"></div><span class="val">10.0&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 32</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">19.9&times;</span></div></div>
         <div class="bar"><span class="lbl" style="color:var(--cpu)">CPU, any d</span><div class="track"><div class="fill b" style="width:4.8%"></div><span class="val">~1.0&times;</span></div></div>
       </div>
-      <div class="cap">GPU: the same total work takes up to 21&times; longer, purely because squad members disagree.
+      <div class="cap">GPU: the same total work takes up to 20&times; longer, purely because squad members disagree.
         CPU: the identical disagreement costs nothing measurable. Each professor simply follows their own recipe;
         no one waits for anyone.</div>
     </div>
@@ -332,9 +335,9 @@
         numbers plugged in, it would have noticed, merged them into <em>one</em> recipe with a lookup table, and our
         experiment would have measured nothing. So each recipe uses genuinely different steps in a different order,
         and each is marked &ldquo;do not merge&rdquo;. The assignment explicitly demands proving the effect is real:
-        at d = 32 the slowdown must exceed roughly 8&times;. Ours: 21.3&times;. Real.</p>
+        at d = 32 the slowdown must exceed roughly 8&times;. Ours: 19.9&times;. Real.</p>
     </div>
-    <p><b>Why 21&times; and not the full 32&times;?</b> Modern NVIDIA chips (since the &ldquo;Volta&rdquo;
+    <p><b>Why 20&times; and not the full 32&times;?</b> Modern NVIDIA chips (since the &ldquo;Volta&rdquo;
       generation) can interleave the frozen groups a little: while recipe 1&rsquo;s workers wait for a result,
       recipe 2&rsquo;s workers can slip a step in. The disagreement tax stays enormous, just not maximal.</p>
   </section>
@@ -376,14 +379,14 @@
     <p><b>Measured speed of moving data</b> (same work in every row!):</p>
     <div class="diagram">
       <div class="bars">
-        <div class="bar"><span class="lbl">coalesced</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">247 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">coalesced</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">243 GB/s</span></div></div>
         <div class="bar"><span class="lbl">gap of 2</span><div class="track"><div class="fill w" style="width:35.3%"></div><span class="val">87 GB/s</span></div></div>
         <div class="bar"><span class="lbl">gap of 8</span><div class="track"><div class="fill w" style="width:8.3%"></div><span class="val">20 GB/s</span></div></div>
         <div class="bar"><span class="lbl">gap of 128</span><div class="track"><div class="fill w" style="width:2.6%"></div><span class="val">6.4 GB/s</span></div></div>
         <div class="bar"><span class="lbl">random</span><div class="track"><div class="fill r" style="width:5.8%"></div><span class="val">14 GB/s</span></div></div>
       </div>
-      <div class="cap">The chip&rsquo;s advertised maximum is 320 GB/s; our best honest measurement reached 247 GB/s
-        (77% of it, which is normal). Everything else is the price of wasted crates: the worst pattern moves data
+      <div class="cap">The chip&rsquo;s advertised maximum is 320 GB/s; our best honest measurement reached 243 GB/s
+        (76% of it, which is normal). Everything else is the price of wasted crates: the worst pattern moves data
         <b>38&times; slower</b> on identical hardware doing identical arithmetic.</div>
     </div>
     <div class="card story">
@@ -420,13 +423,14 @@
       classroom&rsquo;s shared shelf space, so fewer fit). Total work always identical.</p>
     <div class="diagram">
       <div class="bars">
-        <div class="bar"><span class="lbl">25% occupancy<br>(8 of 32 slots)</span><div class="track"><div class="fill w" style="width:84.5%"></div><span class="val">158 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">12.5% occupancy<br>(4 of 32 slots)</span><div class="track"><div class="fill r" style="width:51.3%"></div><span class="val">96 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">25% occupancy</span><div class="track"><div class="fill w" style="width:83.4%"></div><span class="val">156 GB/s</span></div></div>
         <div class="bar"><span class="lbl">50% occupancy</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">187 GB/s</span></div></div>
-        <div class="bar"><span class="lbl">100% occupancy</span><div class="track"><div class="fill" style="width:98%"></div><span class="val">183 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">100% occupancy</span><div class="track"><div class="fill" style="width:97.9%"></div><span class="val">183 GB/s</span></div></div>
       </div>
       <div class="cap">Measured: speed rises while adding squads, then <b>flattens from 50%</b>: beyond that point
         the waiting is already fully hidden, and the memory itself becomes the bottleneck. More juggling buys
-        nothing. (Even 25% got surprisingly far, this simple kernel is easy to juggle.)</div>
+        nothing. With only 4 squads per classroom, the classroom idles half the time.</div>
       </div>
     <div class="card story">
       <span class="tag">The takeaway in one sentence</span>
@@ -439,17 +443,18 @@
     <h2><span class="no">9</span>So what? The four rules the data paid for</h2>
     <hr class="sect">
     <ol>
-      <li><b>Feed the GPU or leave it alone.</b> Below ~1 million parallel jobs, our GPU never showed its real
+      <li><b>Feed the GPU or leave it alone.</b> Below ~16 jobs the GPU lost to the CPU outright, and below
+        ~1 million parallel jobs it never showed its real
         speed. Small or unsplittable problems belong on the CPU.</li>
       <li><b>Keep the squads agreeing.</b> Branching code that makes members of a 32-squad follow different paths
-        costs up to the number of distinct paths (we paid 21.3&times; at 32 paths). The CPU charges nothing for the
+        costs up to the number of distinct paths (we paid 19.9&times; at 32 paths). The CPU charges nothing for the
         same disagreement.</li>
       <li><b>Store data in the order you read it.</b> Wasted memory crates cost us up to 38&times; of bandwidth.
         Neighboring workers should read neighboring numbers.</li>
       <li><b>Hide the wait with enough squads, then stop.</b> Speed rose until half the squad slots were filled,
         then the memory itself was the limit.</li>
     </ol>
-    <p>That is the whole exercise: same chip in every measurement, and factors of 21&times;, 38&times;, 40&times;
+    <p>That is the whole exercise: same chip in every measurement, and factors of 20&times;, 38&times;, 1,600&times;
       appearing and disappearing purely based on <em>how</em> the work was presented. Which is exactly what the
       assignment asked us to demonstrate.</p>
   </section>

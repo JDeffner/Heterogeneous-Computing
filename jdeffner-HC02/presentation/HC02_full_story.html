@@ -185,7 +185,7 @@
           <div class="card"><span class="tag">compiler defense</span>
             <h3>32 operationally distinct paths</h3>
             <p>Distinct constants, distinct instruction order, <span class="mono">__noinline__</span>. Otherwise
-              nvcc merges the branches and Experiment B silently measures nothing. Verified: 21&times; &gt; the
+              nvcc merges the branches and Experiment B silently measures nothing. Verified: 19.9&times; &gt; the
               ~8&times; gate.</p></div>
           <div class="card"><span class="tag">equal work rule</span>
             <h3>Divergence isolated from imbalance</h3>
@@ -287,7 +287,7 @@
     <!-- 8 · Exp A results -->
     <section class="slide">
       <div class="head"><div class="eyebrow">Experiment A · results</div><div class="phase"><b>measured</b></div></div>
-      <h2>Flooded: 1,500&times; ahead. Starved: behind.</h2>
+      <h2>Flooded: 1,600&times; ahead. Starved: behind.</h2>
       <div class="body">
         <div class="cols c2w">
           <figure>
@@ -298,11 +298,10 @@
           </figure>
           <div style="align-self:center; display:flex; flex-direction:column; gap:14px">
             <div class="kpis" style="flex-direction:column">
-              <div class="kpi"><div class="v">4,365 GFLOP/s</div><div class="l">GPU plateau, from n = 2^20 (~1 M threads)</div></div>
-              <div class="kpi"><div class="v">2.9 GFLOP/s</div><div class="l">CPU, both cores, flat over the whole sweep</div></div>
-              <div class="kpi"><div class="v">n ≲ 10&sup2;</div><div class="l">launch-overhead regime: GPU at or below CPU level</div></div>
+              <div class="kpi"><div class="v">5,173 GFLOP/s</div><div class="l">GPU plateau, from n = 2^20 (~1 M threads)</div></div>
+              <div class="kpi"><div class="v">3.2 GFLOP/s</div><div class="l">CPU, both cores, flat over the whole sweep</div></div>
+              <div class="kpi"><div class="v">n = 4: GPU loses</div><div class="l">0.86 vs 2.71 GFLOP/s (~10 µs launch overhead dwarfs the work); crossover at n ≈ 16</div></div>
             </div>
-            <span class="chip">low-n values pending · extended rerun</span>
           </div>
         </div>
       </div>
@@ -339,29 +338,30 @@
     <!-- 10 · Exp B results -->
     <section class="slide">
       <div class="head"><div class="eyebrow">Experiment B · results</div><div class="phase"><b>measured</b></div></div>
-      <h2>21.3&times; at 32 paths. The CPU: unbothered.</h2>
+      <h2>19.9&times; at 32 paths. The CPU: unbothered.</h2>
       <div class="body">
         <div class="cols c2w">
           <figure>
             <img src="../blatt02/results/plots/task1_divergence.png"
                  alt="Relative throughput versus divergence degree: GPU tracks the ideal 1/d slope, CPU flat">
             <figcaption>Relative throughput vs d (log-log). Dotted line: ideal 1/d.
-              Loop-length variant saturates at 1.92&times; as predicted.</figcaption>
+              Loop-length variant saturates at 1.85&times; as predicted.</figcaption>
           </figure>
           <div style="align-self:center">
             <table class="res">
               <tr><th>d</th><th>GPU</th><th>ideal</th><th>CPU</th></tr>
-              <tr><td>2</td><td>1.46&times;</td><td>2</td><td>1.00&times;</td></tr>
-              <tr><td>8</td><td>5.37&times;</td><td>8</td><td>1.03&times;</td></tr>
-              <tr><td>32</td><td><b>21.3&times;</b></td><td>32</td><td>1.02&times;</td></tr>
+              <tr><td>2</td><td>1.79&times;</td><td>2</td><td>flat*</td></tr>
+              <tr><td>8</td><td>5.09&times;</td><td>8</td><td>flat*</td></tr>
+              <tr><td>32</td><td><b>19.9&times;</b></td><td>32</td><td>flat*</td></tr>
             </table>
-            <p class="sub" style="font-size:15px; margin-top:14px">Consistently ~2/3 of the ideal cost: the d = 1
-              chain is latency-bound, and Volta+ independent thread scheduling interleaves the divergent streams.
-              Serialization survives; its edge is softened.</p>
+            <p class="sub" style="font-size:15px; margin-top:14px">*CPU absolute times show no d-trend (~170 ms;
+              the d = 1 reference was itself a VM-noise outlier, so ratios mislead). GPU: ~2/3 of the ideal
+              cost: the d = 1 chain is latency-bound, and Volta+ independent thread scheduling interleaves the
+              divergent streams. Serialization survives; its edge is softened.</p>
           </div>
         </div>
       </div>
-      <div class="foot"><span>Verification gate passed: 21.3 ≫ 8 · effect is real, not a compiler artifact</span><span class="mono">results/task1_divergence.csv</span></div>
+      <div class="foot"><span>Verification gate passed: 19.9 ≫ 8 · effect is real, not a compiler artifact</span><span class="mono">results/task1_divergence.csv</span></div>
     </section>
 
     <!-- 11 · Exp C design -->
@@ -393,20 +393,20 @@
     <!-- 12 · Exp C results -->
     <section class="slide">
       <div class="head"><div class="eyebrow">Experiment C · results</div><div class="phase"><b>measured</b></div></div>
-      <h2>77% of peak, or 38&times; less. Your choice of layout.</h2>
+      <h2>76% of peak, or 38&times; less. Your choice of layout.</h2>
       <div class="body">
         <div class="cols c2w">
           <figure>
             <img src="../blatt02/results/plots/task2_patterns.png"
-                 alt="Bandwidth by access pattern: coalesced 247 GB/s, strided decaying with stride, random gather 14 GB/s">
+                 alt="Bandwidth by access pattern: coalesced 243 GB/s, strided decaying with stride, random gather 14 GB/s">
             <figcaption>Strided bandwidth vs stride (log-x); coalesced, random, and theoretical peak as
               reference lines.</figcaption>
           </figure>
           <div style="align-self:center; display:flex; flex-direction:column; gap:14px">
             <div class="kpis" style="flex-direction:column">
-              <div class="kpi"><div class="v">247 GB/s · 77%</div><div class="l">coalesced vs theoretical peak &rarr; practical peak</div></div>
+              <div class="kpi"><div class="v">243 GB/s · 76%</div><div class="l">coalesced vs theoretical peak &rarr; practical peak</div></div>
               <div class="kpi"><div class="v">6.4 GB/s</div><div class="l">stride 128 · 2.6% of practical peak</div></div>
-              <div class="kpi"><div class="v">14 GB/s</div><div class="l">random gather · 5.8% (21.6 GB/s counting index reads)</div></div>
+              <div class="kpi"><div class="v">14 GB/s</div><div class="l">random gather · 5.9% (21.6 GB/s counting index reads)</div></div>
             </div>
             <p class="sub" style="font-size:15px">From stride 16 the strided pattern is no better than random:
               once every element costs its own transaction, order stops mattering.</p>
@@ -452,17 +452,16 @@
         <div class="cols c2w">
           <figure>
             <img src="../blatt02/results/plots/task2_occupancy.png"
-                 alt="Bandwidth versus theoretical occupancy: rises from 158 GB/s at 25 percent to about 187 GB/s at 50 percent, flat afterwards">
+                 alt="Bandwidth versus theoretical occupancy: rises from 96 GB/s at 12.5 percent through 156 at 25 percent to about 185 GB/s at 50 percent, flat afterwards">
             <figcaption>Bandwidth vs theoretical occupancy; block-size sweep and shared-memory throttle
               series.</figcaption>
           </figure>
           <div style="align-self:center; display:flex; flex-direction:column; gap:14px">
             <div class="kpis" style="flex-direction:column">
-              <div class="kpi"><div class="v">158 &rarr; 187 GB/s</div><div class="l">25% &rarr; 50% occupancy, flat from there (183&ndash;187)</div></div>
-              <div class="kpi"><div class="v">85%</div><div class="l">of the plateau already at 8 warps/SM, streaming is easy to juggle</div></div>
+              <div class="kpi"><div class="v">96 &rarr; 156 &rarr; ~185 GB/s</div><div class="l">12.5% &rarr; 25% &rarr; 50% occupancy, flat from there (182&ndash;187)</div></div>
+              <div class="kpi"><div class="v">4 warps/SM: half speed</div><div class="l">the 12.5% floor (block-128 throttle) reaches only 52% of the plateau</div></div>
             </div>
-            <span class="chip">12.5% point pending · extended rerun (block 128)</span>
-            <p class="sub" style="font-size:15px">Absolute level (~185) sits below Experiment C&rsquo;s 247 GB/s:
+            <p class="sub" style="font-size:15px">Absolute level (~185) sits below Experiment C&rsquo;s 243 GB/s:
               the minimal resident grid trades some memory-level parallelism for the controlled comparison.</p>
           </div>
         </div>
@@ -478,11 +477,11 @@
         <ul class="tight" style="max-width:56em">
           <li><b>One GPU model.</b> Everything is queried at runtime and runs on any cc ≥ 7.0 device, but the
             numbers describe a T4, nothing else.</li>
-          <li><b>No clock control.</b> Colab&rsquo;s boost clocks drift between runs: the 6,853 GFLOP/s outlier at
+          <li><b>No clock control.</b> Colab&rsquo;s boost clocks drift between runs: the 6,446 GFLOP/s outlier at
             n = 2^26, and level shifts of ~20% between sweeps. Medians tame noise within a configuration, not
             drift across them; plateau values are reported for that reason.</li>
           <li><b>A weak CPU baseline, by construction.</b> 2 cores, and the dependent scalar FMA chain cannot be
-            vectorized, so the 1,500&times; headline compares this workload, not architectural peaks. Stated in the
+            vectorized, so the 1,600&times; headline compares this workload, not architectural peaks. Stated in the
             report before anyone has to ask.</li>
           <li><b>Theoretical occupancy, not profiled.</b> Colab denies profiler counters; the API value is used
             and labeled.</li>
@@ -500,20 +499,20 @@
       <div class="body">
         <div class="cols c2" style="grid-template-rows:1fr 1fr">
           <div class="card"><span class="tag">rule 1</span><h3>Saturate first.</h3>
-            <p>Below ~1 M threads the T4 never showed rated speed; below ~10&sup2; it lost to a 2-core CPU
+            <p>Below ~1 M threads the T4 never showed rated speed; below ~16 threads it lost to a 2-core CPU
               outright. Small problems belong on the CPU.</p></div>
           <div class="card"><span class="tag">rule 2</span><h3>Keep warps convergent.</h3>
-            <p>32 paths per warp cost 21.3&times;. If branching is unavoidable, branch at warp granularity, not
+            <p>32 paths per warp cost 19.9&times;. If branching is unavoidable, branch at warp granularity, not
               per lane.</p></div>
           <div class="card"><span class="tag">rule 3</span><h3>Layout is destiny.</h3>
-            <p>247 vs 6.4 GB/s for identical work. Structure-of-arrays, neighbors reading neighbors, no gathers
+            <p>243 vs 6.4 GB/s for identical work. Structure-of-arrays, neighbors reading neighbors, no gathers
               you can avoid.</p></div>
           <div class="card"><span class="tag">rule 4</span><h3>Occupancy is a means.</h3>
             <p>The plateau began at 50%. Enough resident warps to hide latency, then stop optimizing for the
               number.</p></div>
         </div>
         <p class="sub" style="margin-top:18px; font-size:15.5px">Same silicon in every measurement. Factors of 21,
-          38, 1,500 appeared and vanished based only on how the work was presented, which is what the sheet asked
+          38, 1,600 appeared and vanished based only on how the work was presented, which is what the sheet asked
           to be demonstrated.</p>
       </div>
       <div class="foot"><span>All numbers regenerable: one notebook, two commands</span><span class="mono">results/ · run_colab.ipynb</span></div>

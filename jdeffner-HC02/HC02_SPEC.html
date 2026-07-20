@@ -125,7 +125,7 @@
       <span class="hot">everything in English</span>
     </div>
     <p style="color:var(--faint); font-size:14px">Readable companion to <span class="mono">HC02_SPEC.md</span> (the
-      normative text). Checklist entries in §7 carry the measured outcomes of the 2026-07-19 T4 run, clearly marked.
+      normative text). Checklist entries in §7 carry the measured outcomes of the 2026-07-20 T4 run, clearly marked.
       See also: <a href="CODE_EXPLAINED.html">the code, explained</a> · <a href="presentation/HC02_slides.html">slide deck</a>.</p>
   </header>
 
@@ -298,7 +298,8 @@
     <h2><span class="no">7</span>Acceptance checklist</h2>
     <hr class="sect">
     <p style="color:var(--faint); font-size:14.5px">Status column: outcome of the Colab T4 measurement run of
-      2026-07-19 (CUDA 12.8, driver 13.0), commit <span class="mono">1a96603</span>. Not part of the original spec.</p>
+      2026-07-20 (CUDA 12.8, driver 13.0, extended sweeps: n from 4, occupancy from 12.5%). Not part of the
+      original spec.</p>
     <table>
       <tr><th>Requirement</th><th>Status</th></tr>
       <tr><td><code>cmake --build</code> succeeds with CUDA 12.x, no host-code warnings</td>
@@ -306,13 +307,13 @@
       <tr><td>All three binaries run with <code>--help</code> and with defaults</td>
           <td class="ok">✓</td></tr>
       <tr><td>Divergence verified: d=32 slowdown ≥ ~8× vs d=1 on GPU</td>
-          <td class="ok">✓ <span class="num" style="color:var(--muted)">21.3×</span></td></tr>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">19.9×</span></td></tr>
       <tr><td>CPU divergence measured, near-flat over d</td>
-          <td class="ok">✓ <span class="num" style="color:var(--muted)">≤ 1.03× (one 1.75× noise outlier)</span></td></tr>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">absolute times flat over d (~170 ms; d=1 reference itself a VM-noise outlier)</span></td></tr>
       <tr><td>Coalesced bandwidth ≥ ~70% of theoretical peak on T4; gather dramatically lower</td>
-          <td class="ok">✓ <span class="num" style="color:var(--muted)">247 GB/s = 77% · gather 14 GB/s</span></td></tr>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">243 GB/s = 76% · gather 14 GB/s</span></td></tr>
       <tr><td>Occupancy sweep shows rise-then-plateau</td>
-          <td class="ok">✓ <span class="num" style="color:var(--muted)">158 → 187 GB/s, flat from 50%</span></td></tr>
+          <td class="ok">✓ <span class="num" style="color:var(--muted)">96 → 187 GB/s over 12.5&ndash;100%, flat from 50%</span></td></tr>
       <tr><td>Strided/gather kernels validated numerically once per run</td>
           <td class="ok">✓ <span class="num" style="color:var(--muted)">rel_err 0.0, results/run.log</span></td></tr>
       <tr><td><code>results/</code> contains real CSVs + PNGs; REPORT.md cites only those numbers</td>
