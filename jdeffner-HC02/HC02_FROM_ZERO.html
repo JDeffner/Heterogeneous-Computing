@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HC02 From Zero · What We Did, With No Jargon</title>
+<style>
+  :root {
+    --bg: #f6f7f5; --stage: #fdfefc; --ink: #1c2420; --muted: #5a675f;
+    --faint: #8a968d; --line: #dde4dd; --line-soft: #e9eee8;
+    --gpu: #3e8914; --gpu-deep: #2f6e0e; --gpu-soft: #e3efd9;
+    --cpu: #4a6fa5; --cpu-soft: #e2e9f3;
+    --pend: #a1761c; --pend-soft: #f5ead2;
+    --bad: #b3452f; --bad-soft: #f6e0da;
+    --code-bg: #eef1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d120e; --stage: #141b15; --ink: #e9eee9; --muted: #9aa79d;
+      --faint: #6b776e; --line: #263028; --line-soft: #1d251e;
+      --gpu: #7bc950; --gpu-deep: #9ad973; --gpu-soft: #1e2b18;
+      --cpu: #82a8d8; --cpu-soft: #1a2330;
+      --pend: #d9a544; --pend-soft: #2c2415;
+      --bad: #e07a5f; --bad-soft: #331f1a;
+      --code-bg: #1a231b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: 17.5px; line-height: 1.7; }
+  .mono, code { font-family: "Cascadia Code", Consolas, Menlo, monospace; }
+  code { background: var(--code-bg); border-radius: 4px; padding: 1.5px 6px; font-size: .85em; }
+
+  #layout { display: grid; grid-template-columns: 240px minmax(0,1fr); max-width: 1140px; margin: 0 auto; gap: 40px; padding: 0 24px; }
+  @media (max-width: 900px) { #layout { grid-template-columns: minmax(0,1fr); } #toc { display: none; } }
+  #toc { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 42px 0 24px; }
+  #toc .toc-title { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin-bottom: 14px; font-family: Consolas, monospace; }
+  #toc a { display: block; padding: 4px 10px; color: var(--muted); text-decoration: none; font-size: 14px; border-left: 2px solid var(--line); line-height: 1.4; }
+  #toc a:hover { color: var(--ink); }
+  #toc a.active { color: var(--gpu); border-left-color: var(--gpu); font-weight: 600; }
+
+  main { max-width: 47rem; padding: 42px 0 90px; min-width: 0; }
+  .eyebrow { font-family: Consolas, monospace; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow b { color: var(--gpu); font-weight: 600; }
+  h1 { font-size: 42px; line-height: 1.08; letter-spacing: -.02em; margin: 10px 0 14px; font-weight: 750; text-wrap: balance; }
+  .lede { font-size: 20px; color: var(--muted); margin: 0 0 26px; }
+  section { margin-top: 62px; }
+  h2 { font-size: 28px; letter-spacing: -.015em; margin: 0 0 6px; font-weight: 720; text-wrap: balance; }
+  h2 .no { color: var(--faint); font-weight: 500; margin-right: 10px; font-family: Consolas, monospace; font-size: 21px; }
+  h3 { font-size: 19.5px; margin: 30px 0 8px; }
+  p { margin: 13px 0; }
+  ul, ol { margin: 13px 0; padding-left: 24px; }
+  li { margin: 7px 0; }
+  a { color: var(--gpu-deep); }
+  hr.sect { border: none; border-top: 1px solid var(--line); margin: 0 0 18px; }
+  em.term { font-style: normal; font-weight: 650; color: var(--gpu-deep); }
+
+  .card { border: 1px solid var(--line); border-radius: 10px; background: var(--stage); padding: 18px 22px; margin: 16px 0; }
+  .card .tag { font-family: Consolas, monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gpu); display: block; margin-bottom: 8px; }
+  .card.story { background: var(--gpu-soft); border-color: var(--gpu); }
+  .card.cpu { background: var(--cpu-soft); border-color: var(--cpu); }
+  .card.cpu .tag { color: var(--cpu); }
+  .card.warn { background: var(--pend-soft); border-color: var(--pend); }
+  .card.warn .tag { color: var(--pend); }
+  .card > :last-child { margin-bottom: 0; } .card > .tag + * { margin-top: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* diagrams */
+  .diagram { border: 1px solid var(--line); border-radius: 10px; background: var(--stage); padding: 20px 22px 14px; margin: 18px 0; overflow-x: auto; }
+  .diagram .cap { font-size: 13.5px; color: var(--faint); margin-top: 12px; line-height: 1.5; }
+
+  .coregrid { display: grid; gap: 4px; }
+  .coregrid.cpu-g { grid-template-columns: repeat(2, 44px); }
+  .coregrid.cpu-g i { width: 44px; height: 44px; border-radius: 7px; background: var(--cpu); display: block; }
+  .coregrid.gpu-g { grid-template-columns: repeat(16, 1fr); max-width: 320px; }
+  .coregrid.gpu-g i { aspect-ratio: 1; border-radius: 2px; background: var(--gpu); display: block; opacity: .9; }
+
+  .lanerow { display: flex; gap: 3px; margin: 4px 0; align-items: center; }
+  .lanerow .lbl { font-family: Consolas, monospace; font-size: 12px; color: var(--muted); width: 130px; flex: none; }
+  .lanerow i { width: 12px; height: 20px; border-radius: 2.5px; background: var(--gpu); display: block; flex: none; }
+  .lanerow i.off { background: var(--line); }
+  .lanerow i.b { background: var(--cpu); }
+
+  .bars { display: grid; gap: 9px; margin: 8px 0; }
+  .bar { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 12px; }
+  .bar .lbl { font-size: 13.5px; color: var(--muted); text-align: right; line-height: 1.3; }
+  .bar .track { background: var(--line-soft); border-radius: 5px; height: 26px; position: relative; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--gpu); min-width: 2px; }
+  .bar .fill.b { background: var(--cpu); }
+  .bar .fill.w { background: var(--pend); }
+  .bar .fill.r { background: var(--bad); }
+  .bar .val { position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%); font-family: Consolas, monospace; font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+  .bar .val.in { left: auto; right: 8px; color: #fff; }
+
+  .memrow { display: flex; gap: 2px; flex-wrap: wrap; margin: 6px 0; }
+  .crate { display: flex; gap: 2px; padding: 3px; border: 1.5px solid var(--faint); border-radius: 4px; }
+  .crate i { width: 13px; height: 22px; border-radius: 2px; background: var(--line); display: block; }
+  .crate i.used { background: var(--gpu); }
+  .crate.wasted { border-color: var(--bad); background: var(--bad-soft); }
+
+  .timeline { display: grid; gap: 6px; margin: 8px 0; }
+  .trow { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: center; }
+  .trow .lbl { font-family: Consolas, monospace; font-size: 12px; color: var(--muted); text-align: right; }
+  .trow .t { display: flex; gap: 2px; }
+  .trow .t i { height: 20px; border-radius: 3px; flex: none; }
+  .trow .t i.work { background: var(--gpu); }
+  .trow .t i.wait { background: var(--line); }
+
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 15px; }
+  th { text-align: left; font-family: Consolas, monospace; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--line); padding: 8px 10px; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; overflow-wrap: break-word; }
+
+  svg text { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; fill: var(--muted); }
+  svg .axis { stroke: var(--faint); stroke-width: 1.5; }
+  svg .grid { stroke: var(--line); stroke-width: 1; }
+
+  footer { margin-top: 70px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--faint); font-size: 13.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="layout">
+
+<nav id="toc">
+  <div class="toc-title">HC02 · from zero</div>
+  <a href="#job">1 · The assignment, plainly</a>
+  <a href="#chips">2 · Two kinds of chips</a>
+  <a href="#warp">3 · The rule of 32</a>
+  <a href="#measure">4 · How do you time a chip?</a>
+  <a href="#taskA">5 · Exp. A: feed the beast</a>
+  <a href="#taskB">6 · Exp. B: the disagreement tax</a>
+  <a href="#taskC">7 · Exp. C: crates of memory</a>
+  <a href="#taskD">8 · Exp. D: juggling the wait</a>
+  <a href="#takeaway">9 · So what?</a>
+  <a href="#glossary">10 · Glossary</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Heterogeneous Computing · <b>Übungsblatt 2</b> · zero-background edition</div>
+    <h1>What we actually did, explained from zero</h1>
+    <p class="lede">No computer-science background needed. Every term gets introduced before it is used,
+      every idea gets a picture, and every claim ends in a number we really measured.</p>
+    <p style="color:var(--faint); font-size:14px">The technical companions:
+      <a href="HC02_SPEC.html">the assignment spec</a> · <a href="CODE_EXPLAINED.html">the code, explained</a> ·
+      <a href="presentation/HC02_slides.html">the slides</a>.</p>
+  </header>
+
+  <section id="job">
+    <h2><span class="no">1</span>The assignment, in plain words</h2>
+    <hr class="sect">
+    <p>Modern computers contain two very different calculating chips: the <em class="term">CPU</em>
+      (the &ldquo;main brain&rdquo;, good at everything) and the <em class="term">GPU</em>
+      (the &ldquo;graphics card&rdquo;, originally for drawing game frames, now used for any massive computation,
+      including AI). The university course is about using both well.</p>
+    <p>The exercise sheet asks one deceptively simple question:</p>
+    <div class="card story">
+      <span class="tag">The question</span>
+      <p><b>The same chip can be 10&times;, 20&times;, even 100&times; slower depending on <em>how</em> you ask it
+        to work. Prove it. Measure exactly when and why.</b></p>
+    </div>
+    <p>We answered it with four small experiments, run on a real GPU (an NVIDIA &ldquo;Tesla T4&rdquo; that Google
+      lets you borrow for free in the cloud, because this laptop&rsquo;s GPU is the wrong brand for CUDA, NVIDIA&rsquo;s
+      programming language for GPUs):</p>
+    <table>
+      <tr><th>Experiment</th><th>Question in plain words</th></tr>
+      <tr><td><b>A</b> · scaling</td><td>How much work do you have to give a GPU before it shows its real speed?</td></tr>
+      <tr><td><b>B</b> · divergence</td><td>What does it cost when threads that must move in lockstep want to do different things?</td></tr>
+      <tr><td><b>C</b> · memory patterns</td><td>Does it matter in which <em>order</em> you read memory? (Spoiler: enormously.)</td></tr>
+      <tr><td><b>D</b> · occupancy</td><td>How does a GPU avoid twiddling its thumbs while waiting for memory?</td></tr>
+    </table>
+  </section>
+
+  <section id="chips">
+    <h2><span class="no">2</span>Two kinds of chips: 2 professors vs. 2,560 students</h2>
+    <hr class="sect">
+    <p>Both chips do the same elementary thing: arithmetic on numbers, billions of times per second. They differ in
+      <em>how they are organized</em>.</p>
+    <div class="grid2">
+      <div class="card cpu">
+        <span class="tag">CPU · the professors</span>
+        <div class="coregrid cpu-g" aria-hidden="true"><i></i><i></i></div>
+        <p style="margin-top:12px">A handful of very clever, very fast workers (<em class="term">cores</em>).
+          Each works independently, guesses ahead, keeps notes close by. Give a professor <em>any</em> task and it
+          starts immediately at full speed. Our rented cloud machine had just <b>2</b> of them.</p>
+      </div>
+      <div class="card">
+        <span class="tag">GPU · the students</span>
+        <div class="coregrid gpu-g" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <p style="margin-top:12px">Thousands of simple workers (our T4 has <b>2,560</b>). Each one is slow and
+          rule-bound, but there are <em>so many</em>. They are organized into 40 &ldquo;classrooms&rdquo;
+          (called <em class="term">SMs</em>), each holding squads of students.</p>
+      </div>
+    </div>
+    <p>Everything in this exercise follows from one consequence: <b>the GPU only wins when you can split your problem
+      into thousands or millions of small, identical jobs.</b> Each tiny job is called a
+      <em class="term">thread</em> (&ldquo;compute this one number&rdquo;), and the little program every thread runs
+      is called a <em class="term">kernel</em>.</p>
+  </section>
+
+  <section id="warp">
+    <h2><span class="no">3</span>The rule of 32: squads that move in lockstep</h2>
+    <hr class="sect">
+    <p>Here is the strange part, and the heart of Experiment B. GPU students are not free individuals. They are
+      grouped into squads of exactly <b>32</b>, called <em class="term">warps</em>, and a squad has
+      <b>one shared instruction sheet</b>. All 32 perform the same step at the same moment, like a dance troupe:</p>
+    <div class="diagram">
+      <div class="lanerow"><span class="lbl">one warp, step 1:</span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="lanerow"><span class="lbl">step 2:</span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="cap">32 threads (green ticks) = one warp. Every tick performs the identical instruction in every
+        step. This is called <b>SIMT</b>: Single Instruction, Multiple Threads.</div>
+    </div>
+    <p>Why build it this way? Because sharing one instruction sheet among 32 workers is cheap: you can afford
+      thousands of workers precisely <em>because</em> they do not each need their own conductor.</p>
+    <div class="card warn">
+      <span class="tag">The catch</span>
+      <p>What if the shared script contains an &ldquo;if&rdquo;? Say half the squad should do exercise A and half
+        exercise B. A squad with one instruction sheet <b>cannot do both at once</b>. It does A first (the B-half
+        stands frozen), <em>then</em> B (the A-half stands frozen). Two exercises &rarr; twice the time.
+        This freezing-half-the-squad situation is called <em class="term">warp divergence</em>, and measuring its
+        price is Experiment B.</p>
+    </div>
+  </section>
+
+  <section id="measure">
+    <h2><span class="no">4</span>How do you time a chip honestly?</h2>
+    <hr class="sect">
+    <p>Before any results: how we measured, because sloppy measurement produces impressive nonsense.</p>
+    <ul>
+      <li><b>A stopwatch on the GPU itself.</b> When you hand the GPU a job, your program does not wait for it,
+        so timing with an ordinary clock measures the handover (nothing) instead of the work. The GPU can stamp
+        time markers into its own to-do list; we put one marker before the job and one after and let the GPU report
+        the difference.</li>
+      <li><b>Warm up first, then time.</b> The first run of anything is slow for boring reasons (code being loaded,
+        the chip waking up from power-saving). We run every measurement 3 times unrecorded, then 10 times for real.</li>
+      <li><b>Take the median.</b> Of the 10 timed runs we report the middle value, so one random hiccup in
+        Google&rsquo;s cloud cannot distort the result.</li>
+      <li><b>Check the answers.</b> Every memory experiment re-adds all the numbers it produced and compares
+        against the known correct total. A fast-but-wrong program measures nothing.</li>
+    </ul>
+    <p>The speed units you will see: <em class="term">GFLOP/s</em> = billions of arithmetic operations per second
+      (bigger = faster calculating), and <em class="term">GB/s</em> = gigabytes moved per second (bigger = faster
+      memory access).</p>
+  </section>
+
+  <section id="taskA">
+    <h2><span class="no">5</span>Experiment A · a GPU must be flooded before it flows</h2>
+    <hr class="sect">
+    <p><b>Setup:</b> give every thread the same small piece of pure arithmetic (1,024 chained multiply-adds, no
+      memory work worth mentioning), and vary only <em>how many</em> threads we launch: from about a thousand up to
+      67 million. If the GPU were like a CPU, speed per unit of work would not depend on the amount.</p>
+    <p><b>It depends enormously:</b></p>
+    <div class="diagram">
+      <svg viewBox="0 0 620 260" role="img" aria-label="Speed versus number of jobs: GPU curve rises from tiny to full speed at about one million jobs, CPU line stays flat and low">
+        <line x1="60" y1="15" x2="60" y2="215" class="axis"/>
+        <line x1="60" y1="215" x2="600" y2="215" class="axis"/>
+        <text x="8" y="20">speed</text>
+        <text x="470" y="245">number of jobs given</text>
+        <text x="52" y="245" text-anchor="middle">1,000</text>
+        <text x="330" y="245" text-anchor="middle">~1 million</text>
+        <text x="580" y="245" text-anchor="middle">67 million</text>
+        <line x1="330" y1="25" x2="330" y2="215" class="grid" stroke-dasharray="4 5"/>
+        <path d="M 65 205 C 150 200, 220 160, 280 80 C 305 48, 320 38, 345 34 L 595 30"
+              fill="none" stroke="var(--gpu)" stroke-width="4" stroke-linecap="round"/>
+        <line x1="65" y1="196" x2="595" y2="196" stroke="var(--cpu)" stroke-width="3.5" stroke-linecap="round"/>
+        <text x="500" y="52" style="fill:var(--gpu); font-weight:600">GPU</text>
+        <text x="500" y="188" style="fill:var(--cpu); font-weight:600">CPU (flat from the start)</text>
+        <text x="338" y="120">full speed only from here:</text>
+        <text x="338" y="138">~1 million jobs at once</text>
+      </svg>
+      <div class="cap">Shape of the measured curve (the exact plot is
+        <span class="mono">blatt02/results/plots/task1_scaling.png</span>). With few jobs, most of the 2,560 students
+        sit idle and the GPU is <em>slower than it looks on paper by a factor of 40</em>. From about a million jobs
+        it reaches its plateau.</div>
+    </div>
+    <div class="card story">
+      <span class="tag">Measured</span>
+      <p>GPU plateau: <b>~4,365 GFLOP/s</b>, reached from about <b>1 million threads</b>. The 2-core CPU managed
+        <b>2.9 GFLOP/s</b> with both cores, and was equally fast at every size, no warm-up scale needed. On this
+        workload the GPU ended up roughly <b>1,500&times;</b> faster, a lopsided comparison (2 cores, and the CPU
+        version could not use its own vector tricks), but the shape of the two curves is the honest lesson: the
+        GPU needs a crowd, the CPU does not.</p>
+    </div>
+    <p><b>Why the ramp?</b> A classroom (SM) juggles many squads at once and hides small delays by switching between
+      them (more on that in §8). Few threads = few squads = nothing to switch to = idle time. Also, 1,000 jobs
+      spread over 40 classrooms is 25 jobs each, not enough to even fill one squad of 32 per classroom.</p>
+  </section>
+
+  <section id="taskB">
+    <h2><span class="no">6</span>Experiment B · the disagreement tax</h2>
+    <hr class="sect">
+    <p><b>Setup:</b> now we deliberately make the members of each squad disagree. We wrote 32 <em>different</em>
+      recipes of arithmetic, each with exactly the same amount of work (so any slowdown is pure disagreement, not
+      &ldquo;recipe 7 was harder&rdquo;). Then we tell each squad: &ldquo;you must use <b>d</b> different recipes
+      among your 32 members&rdquo;, with d = 1, 2, 4, 8, 16, 32.</p>
+    <div class="diagram">
+      <div class="lanerow"><span class="lbl">d = 1 · pass 1:</span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div style="height:10px"></div>
+      <div class="lanerow"><span class="lbl">d = 2 · pass 1:</span><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i></div>
+      <div class="lanerow"><span class="lbl">d = 2 · pass 2:</span><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i><i class="off"></i><i></i></div>
+      <div class="cap">Half a warp shown per row. With one recipe (d = 1) everyone works every moment. With two
+        recipes the hardware runs recipe 1 while the others are frozen (grey), then recipe 2 for the rest:
+        same work, twice the time. With d = 32, thirty-two passes.</div>
+    </div>
+    <p><b>Measured slowdown</b> (how many times longer than d = 1):</p>
+    <div class="diagram">
+      <div class="bars">
+        <div class="bar"><span class="lbl">d = 1</span><div class="track"><div class="fill" style="width:4.7%"></div><span class="val">1.0&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 2</span><div class="track"><div class="fill" style="width:6.9%"></div><span class="val">1.46&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 4</span><div class="track"><div class="fill" style="width:13.1%"></div><span class="val">2.8&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 8</span><div class="track"><div class="fill" style="width:25.2%"></div><span class="val">5.4&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 16</span><div class="track"><div class="fill" style="width:50%"></div><span class="val">10.7&times;</span></div></div>
+        <div class="bar"><span class="lbl">d = 32</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">21.3&times;</span></div></div>
+        <div class="bar"><span class="lbl" style="color:var(--cpu)">CPU, any d</span><div class="track"><div class="fill b" style="width:4.8%"></div><span class="val">~1.0&times;</span></div></div>
+      </div>
+      <div class="cap">GPU: the same total work takes up to 21&times; longer, purely because squad members disagree.
+        CPU: the identical disagreement costs nothing measurable. Each professor simply follows their own recipe;
+        no one waits for anyone.</div>
+    </div>
+    <div class="card warn">
+      <span class="tag">The sneaky part: fighting the compiler</span>
+      <p>A <em class="term">compiler</em> is the program that translates our human-readable code into chip
+        instructions, and it is aggressively clever. If our 32 recipes had been the same steps with different
+        numbers plugged in, it would have noticed, merged them into <em>one</em> recipe with a lookup table, and our
+        experiment would have measured nothing. So each recipe uses genuinely different steps in a different order,
+        and each is marked &ldquo;do not merge&rdquo;. The assignment explicitly demands proving the effect is real:
+        at d = 32 the slowdown must exceed roughly 8&times;. Ours: 21.3&times;. Real.</p>
+    </div>
+    <p><b>Why 21&times; and not the full 32&times;?</b> Modern NVIDIA chips (since the &ldquo;Volta&rdquo;
+      generation) can interleave the frozen groups a little: while recipe 1&rsquo;s workers wait for a result,
+      recipe 2&rsquo;s workers can slip a step in. The disagreement tax stays enormous, just not maximal.</p>
+  </section>
+
+  <section id="taskC">
+    <h2><span class="no">7</span>Experiment C · memory arrives in crates</h2>
+    <hr class="sect">
+    <p>Now the second half of the sheet: memory. A GPU&rsquo;s memory (8&ndash;16 GB of it) does not hand out single
+      numbers. It delivers <b>fixed-size crates</b> of 32 bytes, that is 8 numbers at a time, whether you want them
+      or not. You ask for one number, a whole crate arrives, the unused rest is thrown away.</p>
+    <p><b>Setup:</b> the simplest possible job, &ldquo;read a number, multiply by 1.5, write it back&rdquo;,
+      67 million times. We only change the <em>order</em> in which threads pick their numbers:</p>
+    <div class="diagram">
+      <p style="margin:0 0 4px; font-size:14.5px"><b style="color:var(--gpu)">Pattern 1 · coalesced</b> &mdash; neighboring threads read neighboring numbers:</p>
+      <div class="memrow">
+        <div class="crate"><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i></div>
+        <div class="crate"><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i></div>
+        <div class="crate"><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i></div>
+        <div class="crate"><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i><i class="used"></i></div>
+      </div>
+      <p style="margin:14px 0 4px; font-size:14.5px"><b style="color:var(--pend)">Pattern 2 · strided</b> &mdash; each thread jumps ahead by a fixed gap (here 8):</p>
+      <div class="memrow">
+        <div class="crate wasted"><i class="used"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="crate wasted"><i class="used"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="crate wasted"><i class="used"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="crate wasted"><i class="used"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <p style="margin:14px 0 4px; font-size:14.5px"><b style="color:var(--bad)">Pattern 3 · random</b> &mdash; every thread reads a random position:</p>
+      <div class="memrow">
+        <div class="crate wasted"><i></i><i></i><i class="used"></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="crate wasted"><i></i><i></i><i></i><i></i><i></i><i class="used"></i><i></i><i></i></div>
+        <div class="crate wasted"><i class="used"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="crate wasted"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="used"></i></div>
+      </div>
+      <div class="cap">Green = numbers actually used, grey = delivered and thrown away. Coalesced uses 100% of every
+        crate; a squad of 32 neighbors is served by a few crates. With gaps or randomness, every single number costs
+        a whole crate: 7/8 of the delivery truck is garbage.</div>
+    </div>
+    <p><b>Measured speed of moving data</b> (same work in every row!):</p>
+    <div class="diagram">
+      <div class="bars">
+        <div class="bar"><span class="lbl">coalesced</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">247 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">gap of 2</span><div class="track"><div class="fill w" style="width:35.3%"></div><span class="val">87 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">gap of 8</span><div class="track"><div class="fill w" style="width:8.3%"></div><span class="val">20 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">gap of 128</span><div class="track"><div class="fill w" style="width:2.6%"></div><span class="val">6.4 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">random</span><div class="track"><div class="fill r" style="width:5.8%"></div><span class="val">14 GB/s</span></div></div>
+      </div>
+      <div class="cap">The chip&rsquo;s advertised maximum is 320 GB/s; our best honest measurement reached 247 GB/s
+        (77% of it, which is normal). Everything else is the price of wasted crates: the worst pattern moves data
+        <b>38&times; slower</b> on identical hardware doing identical arithmetic.</div>
+    </div>
+    <div class="card story">
+      <span class="tag">The takeaway in one sentence</span>
+      <p>On a GPU, <b>how you arrange your data is a 10&ndash;40&times; performance decision</b>, before a single
+        line of clever code. Keep numbers that are processed together stored next to each other.</p>
+    </div>
+  </section>
+
+  <section id="taskD">
+    <h2><span class="no">8</span>Experiment D · juggling while the kettle boils</h2>
+    <hr class="sect">
+    <p>One more puzzle. Fetching a crate from main memory takes an eternity in chip time, hundreds of clock ticks.
+      A professor (CPU) copes with private snack drawers of recently used data (<em class="term">caches</em>) and by
+      guessing ahead. The GPU&rsquo;s students have tiny drawers. Their trick is different: <b>massive juggling</b>.</p>
+    <p>Each classroom (SM) can host up to 32 squads at once, even though it can only <em>execute</em> a few at any
+      instant. The moment a squad is stuck waiting for its crate, the classroom instantly switches to another squad
+      that has its data ready:</p>
+    <div class="diagram">
+      <div class="timeline">
+        <div class="trow"><span class="lbl">1 squad:</span><div class="t"><i class="work" style="width:34px"></i><i class="wait" style="width:110px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:110px"></i><i class="work" style="width:34px"></i></div></div>
+        <div class="trow"><span class="lbl">squad 1:</span><div class="t"><i class="work" style="width:34px"></i><i class="wait" style="width:110px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:110px"></i><i class="work" style="width:34px"></i></div></div>
+        <div class="trow"><span class="lbl">squad 2:</span><div class="t"><i class="wait" style="width:36px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:110px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:108px"></i></div></div>
+        <div class="trow"><span class="lbl">squad 3:</span><div class="t"><i class="wait" style="width:72px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:110px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:72px"></i></div></div>
+        <div class="trow"><span class="lbl">squad 4:</span><div class="t"><i class="wait" style="width:108px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:110px"></i><i class="work" style="width:34px"></i><i class="wait" style="width:36px"></i></div></div>
+      </div>
+      <div class="cap">Green = computing, grey = waiting for memory. Top: a single squad leaves the classroom idle
+        most of the time. Bottom: with several squads resident, <em>someone</em> is always ready to compute, and the
+        waiting is completely hidden. The fraction of squad slots that are filled is called
+        <em class="term">occupancy</em>.</div>
+    </div>
+    <p><b>Setup:</b> we ran the friendly coalesced kernel from Experiment C, but artificially limited how many
+      squads each classroom may host (there is a knob for that: making each squad reserve a huge chunk of the
+      classroom&rsquo;s shared shelf space, so fewer fit). Total work always identical.</p>
+    <div class="diagram">
+      <div class="bars">
+        <div class="bar"><span class="lbl">25% occupancy<br>(8 of 32 slots)</span><div class="track"><div class="fill w" style="width:84.5%"></div><span class="val">158 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">50% occupancy</span><div class="track"><div class="fill" style="width:100%"></div><span class="val in">187 GB/s</span></div></div>
+        <div class="bar"><span class="lbl">100% occupancy</span><div class="track"><div class="fill" style="width:98%"></div><span class="val">183 GB/s</span></div></div>
+      </div>
+      <div class="cap">Measured: speed rises while adding squads, then <b>flattens from 50%</b>: beyond that point
+        the waiting is already fully hidden, and the memory itself becomes the bottleneck. More juggling buys
+        nothing. (Even 25% got surprisingly far, this simple kernel is easy to juggle.)</div>
+      </div>
+    <div class="card story">
+      <span class="tag">The takeaway in one sentence</span>
+      <p>Occupancy is a <b>means, not a score</b>: you need <em>enough</em> resident squads to hide the memory wait,
+        and past that point chasing 100% is pointless.</p>
+    </div>
+  </section>
+
+  <section id="takeaway">
+    <h2><span class="no">9</span>So what? The four rules the data paid for</h2>
+    <hr class="sect">
+    <ol>
+      <li><b>Feed the GPU or leave it alone.</b> Below ~1 million parallel jobs, our GPU never showed its real
+        speed. Small or unsplittable problems belong on the CPU.</li>
+      <li><b>Keep the squads agreeing.</b> Branching code that makes members of a 32-squad follow different paths
+        costs up to the number of distinct paths (we paid 21.3&times; at 32 paths). The CPU charges nothing for the
+        same disagreement.</li>
+      <li><b>Store data in the order you read it.</b> Wasted memory crates cost us up to 38&times; of bandwidth.
+        Neighboring workers should read neighboring numbers.</li>
+      <li><b>Hide the wait with enough squads, then stop.</b> Speed rose until half the squad slots were filled,
+        then the memory itself was the limit.</li>
+    </ol>
+    <p>That is the whole exercise: same chip in every measurement, and factors of 21&times;, 38&times;, 40&times;
+      appearing and disappearing purely based on <em>how</em> the work was presented. Which is exactly what the
+      assignment asked us to demonstrate.</p>
+  </section>
+
+  <section id="glossary">
+    <h2><span class="no">10</span>Glossary, in one breath each</h2>
+    <hr class="sect">
+    <table>
+      <tr><th>Term</th><th>Meaning</th></tr>
+      <tr><td><b>CPU</b></td><td>The computer&rsquo;s main chip. Few, fast, independent cores. Good at everything.</td></tr>
+      <tr><td><b>GPU</b></td><td>The graphics/compute chip. Thousands of simple cores. Only good at huge crowds of identical small jobs.</td></tr>
+      <tr><td><b>Core</b></td><td>One worker inside a chip.</td></tr>
+      <tr><td><b>Thread</b></td><td>One small job (&ldquo;process this one number&rdquo;).</td></tr>
+      <tr><td><b>Kernel</b></td><td>The mini-program every GPU thread runs.</td></tr>
+      <tr><td><b>Warp</b></td><td>A squad of 32 threads sharing one instruction sheet, moving in lockstep.</td></tr>
+      <tr><td><b>Warp divergence</b></td><td>Members of one warp needing different code paths; the hardware runs the paths one after another.</td></tr>
+      <tr><td><b>SM</b></td><td>&ldquo;Streaming Multiprocessor&rdquo;: one classroom of the GPU, hosts up to 32 warps. Our T4 has 40.</td></tr>
+      <tr><td><b>Occupancy</b></td><td>How many of an SM&rsquo;s warp slots are filled. Fuel for hiding memory waits.</td></tr>
+      <tr><td><b>Coalesced access</b></td><td>Neighboring threads reading neighboring memory, so every delivered crate is fully used.</td></tr>
+      <tr><td><b>FLOP / GFLOP/s</b></td><td>One arithmetic operation / billions of them per second.</td></tr>
+      <tr><td><b>Bandwidth (GB/s)</b></td><td>How many gigabytes per second flow between memory and chip.</td></tr>
+      <tr><td><b>Compiler</b></td><td>Translates human code into chip instructions; clever enough that experiments must be defended against its optimizations.</td></tr>
+      <tr><td><b>CUDA</b></td><td>NVIDIA&rsquo;s language/toolkit for programming GPUs (why the AMD laptop GPU could not run this).</td></tr>
+      <tr><td><b>Google Colab</b></td><td>Free cloud notebooks with a real NVIDIA T4 GPU, where all measurements ran.</td></tr>
+      <tr><td><b>Median</b></td><td>Middle value of a sorted list; our defense against random cloud hiccups.</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    <span>HC02 · zero-background edition · all numbers from the real T4 run (results/)</span>
+    <span class="mono"><a href="HC02_SPEC.html">spec</a> · <a href="CODE_EXPLAINED.html">code</a> · <a href="presentation/HC02_slides.html">slides</a></span>
+  </footer>
+</main>
+</div>
+
+<script>
+  const links = [...document.querySelectorAll('#toc a')];
+  const targets = links.map(a => document.querySelector(a.hash));
+  const spy = () => {
+    let i = targets.findLastIndex(t => t && t.getBoundingClientRect().top < 120);
+    links.forEach((a, j) => a.classList.toggle('active', j === Math.max(i, 0)));
+  };
+  document.addEventListener('scroll', spy, { passive: true });
+  spy();
+</script>
+</body>
+</html>
