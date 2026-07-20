@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "src/web/server.ts"],
+      "name": "dashboard",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": ["run", "--release", "--manifest-path", "hub/Cargo.toml", "--bin", "dashboard"],
       "port": 3000
     }
   ]

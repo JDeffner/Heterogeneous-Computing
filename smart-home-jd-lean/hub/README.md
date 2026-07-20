@@ -12,6 +12,7 @@ hub/
     hub/        -> bin hub          registry, rules, alarms, commissioning
     dashboard/  -> bin dashboard    axum web UI + SSE, MQTT mirror
     ctl/        -> bin ctl          seed rooms / clear retained state
+    sim/        -> bin sim          simulated devices (all five roles, no hardware)
 ```
 
 ## Build

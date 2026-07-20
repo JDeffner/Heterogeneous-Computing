@@ -84,7 +84,7 @@ async fn main() {
 
             // Wipe persisted state files.
             let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "data".into());
-            for f in ["devices.json", "rooms.json"] {
+            for f in ["devices.json", "rooms.json", "sim-devices.json"] {
                 let path = std::path::Path::new(&data_dir).join(f);
                 if path.exists() {
                     match std::fs::remove_file(&path) {

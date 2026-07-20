@@ -94,7 +94,10 @@ MQTT_URL=mqtt://localhost:1883 DATA_DIR=../data ./target/release/hub &
 MQTT_URL=mqtt://localhost:1883 WEB_PORT=3000 ./target/release/dashboard &
 ./target/release/ctl seed-rooms     # optional: create some rooms
 
-# 3) a device (real ESP32)
+# 3a) simulated devices (no hardware needed): all five roles pair + report
+MQTT_URL=mqtt://localhost:1883 DATA_DIR=../data ./target/release/sim
+
+# 3b) a device (real ESP32)
 cd ../firmware
 . $IDF_PATH/export.sh
 idf.py set-target esp32
@@ -170,7 +173,7 @@ cd hub && ./target/release/ctl clear   # clear retained state + data/*.json
 ## Project structure
 
 ```
-hub/         Rust workspace: shared contracts, hub, dashboard, ctl
+hub/         Rust workspace: shared contracts, hub, dashboard, ctl, sim
 firmware/    ESP-IDF C firmware (one image per device role) + host test
 mosquitto/   broker configuration
 data/        persisted devices.json + rooms.json (created at runtime)
