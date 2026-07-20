@@ -120,13 +120,16 @@ save(fig, "task2_patterns.png")
 # --- 4) Task 2, experiment D: bandwidth vs occupancy ------------------------
 df = load("task2_occupancy.csv")
 fig, ax = plt.subplots(figsize=(7, 4.5))
-for knob, label, style in [("block", "block size sweep", "o-"),
-                           ("smem", "smem throttle (block 256)", "s--")]:
-    sub = df[df.knob == knob].sort_values("occupancy").reset_index(drop=True)
+smem_blocks = sorted(df[df.knob == "smem"].block.unique())
+series = [(df.knob == "block", "block size sweep", "o-")] + [
+    ((df.knob == "smem") & (df.block == b), f"smem throttle (block {b})", style)
+    for b, style in zip(smem_blocks, ["s--", "^--", "d--"])]
+for mask, label, style in series:
+    sub = df[mask].sort_values("occupancy").reset_index(drop=True)
     ax.plot(100 * sub.occupancy, sub.gbps, style, label=label)
     for i, r in sub.iterrows():
-        tag = f"b{int(r.block)}" if knob == "block" else f"{int(r.smem_bytes) // 1024}K"
-        dy = 5 + 9 * (i % 3) if knob == "block" else -11 - 9 * (i % 3)
+        tag = f"b{int(r.block)}" if label.startswith("block") else f"{int(r.smem_bytes) // 1024}K"
+        dy = 5 + 9 * (i % 3) if label.startswith("block") else -11 - 9 * (i % 3)
         ax.annotate(tag, (100 * r.occupancy, r.gbps), fontsize=7,
                     textcoords="offset points", xytext=(3, dy))
 ax.set_xlabel("theoretical occupancy (%)")
@@ -145,6 +148,10 @@ for dev in ("cpu1", "cpuN"):
     sub = sc[sc.device == dev]
     if not sub.empty:
         print(f"{dev}: {sub.gflops.max():.1f} GFLOP/s (max over n)")
+cpu_best = sc[sc.device != "gpu"].gflops.max()
+above = gpu[gpu.gflops >= cpu_best]
+if not above.empty:
+    print(f"GPU overtakes the best CPU value from n = {int(above.n.min())}")
 dv = load("task1_divergence.csv")
 for dev, mode in [("gpu", "branch"), ("gpu", "looplen"), ("cpuN", "branch")]:
     row = dv[(dv.device == dev) & (dv["mode"] == mode) & (dv.d == 32)]

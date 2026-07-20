@@ -105,7 +105,7 @@ void usage(const char* argv0) {
   std::fprintf(stderr,
                "usage: %s [--exp scaling|divergence] [--n N] [--k K] [--no-header]\n"
                "  --exp scaling     GFLOP/s vs n for cpu1 and cpuN (default),\n"
-               "                    sweeps n = 2^10, 2^12, ..., 2^20 unless --n is given\n"
+               "                    sweeps n = 2^2, 2^4, ..., 2^20 unless --n is given\n"
                "  --exp divergence  d = 1,2,4,8,16,32 branch/looplen sweep (cpuN),\n"
                "                    default n = 2^18\n"
                "  --k K             inner iterations, multiple of 4 (default 1024)\n"
@@ -145,8 +145,10 @@ void consume(const float* b, int n) {
 }
 
 void run_scaling(const Args& args, int max_threads) {
+  // Same low starting point as the GPU sweep (2^2) so the crossover where
+  // the GPU is still slower than the CPU is visible in one plot.
   const int n_max = args.n > 0 ? args.n : (1 << 20);
-  const int n_min = args.n > 0 ? args.n : (1 << 10);
+  const int n_min = args.n > 0 ? args.n : (1 << 2);
   std::vector<float> a(n_max, 1.0f), b(n_max, 0.0f);
 
   // The block column holds the thread count for CPU rows.

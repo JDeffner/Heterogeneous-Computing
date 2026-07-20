@@ -208,7 +208,9 @@ void run_occupancy(const Args& args, const DeviceInfo& info) {
   }
 
   // Knob 2: fixed block size, unused dynamic shared memory per block caps
-  // the number of resident blocks per SM.
+  // the number of resident blocks per SM. Run at half the block size too:
+  // smaller blocks reach lower occupancy floors (block 128 gets to 12.5%
+  // on a T4, where block 256 bottoms out at 25%).
   int dev = 0;
   CUDA_CHECK(cudaGetDevice(&dev));
   int smem_per_sm = 0, smem_optin = 0;
@@ -219,23 +221,25 @@ void run_occupancy(const Args& args, const DeviceInfo& info) {
   CUDA_CHECK(cudaFuncSetAttribute(kernel_gridstride,
                                   cudaFuncAttributeMaxDynamicSharedMemorySize,
                                   smem_optin));
-  int max_blocks = 0;
-  CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &max_blocks, kernel_gridstride, args.block, 0));
-  int prev_active = -1;
-  for (int m = 1; m <= max_blocks; ++m) {
-    size_t smem = static_cast<size_t>(smem_per_sm) / m;
-    if (smem > static_cast<size_t>(smem_optin)) smem = smem_optin;
-    if (m == max_blocks) smem = 0;  // unthrottled reference point
-    int active = 0;
+  for (int tblock : {args.block / 2, args.block}) {
+    int max_blocks = 0;
     CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-        &active, kernel_gridstride, args.block, smem));
-    if (active == prev_active) continue;
-    prev_active = active;
-    float t = time_median_ms([&] {
-      kernel_gridstride<<<active * sms, args.block, smem>>>(buf.da, buf.db, n, kScale);
-    });
-    occupancy_row("smem", args.block, smem, active, max_warps_per_sm, n, t);
+        &max_blocks, kernel_gridstride, tblock, 0));
+    int prev_active = -1;
+    for (int m = 1; m <= max_blocks; ++m) {
+      size_t smem = static_cast<size_t>(smem_per_sm) / m;
+      if (smem > static_cast<size_t>(smem_optin)) smem = smem_optin;
+      if (m == max_blocks) smem = 0;  // unthrottled reference point
+      int active = 0;
+      CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+          &active, kernel_gridstride, tblock, smem));
+      if (active == prev_active) continue;
+      prev_active = active;
+      float t = time_median_ms([&] {
+        kernel_gridstride<<<active * sms, tblock, smem>>>(buf.da, buf.db, n, kScale);
+      });
+      occupancy_row("smem", tblock, smem, active, max_warps_per_sm, n, t);
+    }
   }
 
   // One checksum per run for the streaming kernel used here.

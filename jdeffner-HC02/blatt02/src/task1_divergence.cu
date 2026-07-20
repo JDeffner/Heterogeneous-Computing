@@ -88,7 +88,7 @@ void usage(const char* argv0) {
   std::fprintf(stderr,
                "usage: %s [--exp scaling|divergence] [--n N] [--k K] [--block B]\n"
                "  --exp scaling     experiment A: GFLOP/s vs n, no divergence (default)\n"
-               "                    sweeps n = 2^10, 2^12, ..., 2^26 unless --n is given\n"
+               "                    sweeps n = 2^2, 2^4, ..., 2^26 unless --n is given\n"
                "  --exp divergence  experiment B: d = 1,2,4,8,16,32 branch/looplen sweep\n"
                "  --n N             single problem size (default: sweep / 2^24)\n"
                "  --k K             inner iterations, multiple of 4 (default 1024)\n"
@@ -124,8 +124,10 @@ double gflops_of(long long n, long long k, float t_ms) {
 }
 
 void run_scaling(const Args& args, const DeviceInfo& info) {
+  // Sweep starts far below one warp so the plot shows the regime where the
+  // fixed launch overhead makes the GPU slower than a single CPU core.
   const int n_max = args.n > 0 ? args.n : (1 << 26);
-  const int n_min = args.n > 0 ? args.n : (1 << 10);
+  const int n_min = args.n > 0 ? args.n : (1 << 2);
 
   float *da = nullptr, *db = nullptr;
   CUDA_CHECK(cudaMalloc(&da, sizeof(float) * n_max));
